@@ -89,8 +89,14 @@ class DeviceRentalApp {
         // QR 생성 관련 버튼
         document.getElementById('menuBtn').addEventListener('click', () => this.openQrGenerator());
         document.getElementById('backFromGenerator').addEventListener('click', () => this.showScreen('mainScreen'));
+        document.getElementById('backFromBatch').addEventListener('click', () => this.showScreen('mainScreen'));
         document.getElementById('generateQrBtn').addEventListener('click', () => this.generateQrCode());
         document.getElementById('downloadQrBtn').addEventListener('click', () => this.downloadGeneratedQr());
+        document.getElementById('generateBatchBtn').addEventListener('click', () => this.generateBatchQrCodes());
+
+        // 탭 전환
+        document.getElementById('tabSingle').addEventListener('click', () => this.switchTab('single'));
+        document.getElementById('tabBatch').addEventListener('click', () => this.switchTab('batch'));
 
         // QR 생성 입력 엔터 키
         document.getElementById('genDeviceId').addEventListener('keypress', (e) => {
@@ -438,6 +444,103 @@ class DeviceRentalApp {
         const img = qrContainer.querySelector('img');
         const canvas = qrContainer.querySelector('canvas');
         const deviceId = document.getElementById('qrResultId').textContent;
+
+        const link = document.createElement('a');
+        link.download = `QR_${deviceId}.png`;
+
+        if (canvas) {
+            link.href = canvas.toDataURL('image/png');
+        } else if (img) {
+            link.href = img.src;
+        }
+
+        link.click();
+    }
+
+    /**
+     * 탭 전환
+     */
+    switchTab(tab) {
+        document.getElementById('tabSingle').classList.remove('active');
+        document.getElementById('tabBatch').classList.remove('active');
+        document.getElementById('singleGenSection').classList.remove('active');
+        document.getElementById('batchGenSection').classList.remove('active');
+
+        if (tab === 'single') {
+            document.getElementById('tabSingle').classList.add('active');
+            document.getElementById('singleGenSection').classList.add('active');
+        } else {
+            document.getElementById('tabBatch').classList.add('active');
+            document.getElementById('batchGenSection').classList.add('active');
+        }
+    }
+
+    /**
+     * 일괄 QR 코드 생성
+     */
+    generateBatchQrCodes() {
+        const input = document.getElementById('batchInput').value.trim();
+
+        if (!input) {
+            alert('디바이스 목록을 입력해주세요.');
+            return;
+        }
+
+        const lines = input.split('\n').filter(line => line.trim());
+        const resultsContainer = document.getElementById('batchResultArea');
+        resultsContainer.innerHTML = '';
+
+        lines.forEach((line, index) => {
+            const parts = line.split(',').map(p => p.trim());
+            const deviceId = parts[0];
+            const deviceName = parts[1] || deviceId;
+
+            if (!deviceId) return;
+
+            const card = document.createElement('div');
+            card.className = 'qr-card';
+
+            const qrWrapper = document.createElement('div');
+            qrWrapper.className = 'qr-wrapper';
+            qrWrapper.id = `qrBatch_${index}`;
+
+            const idText = document.createElement('div');
+            idText.className = 'device-id';
+            idText.textContent = deviceId;
+
+            const nameText = document.createElement('div');
+            nameText.className = 'device-name';
+            nameText.textContent = deviceName;
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.className = 'download-btn';
+            downloadBtn.textContent = '다운로드';
+            downloadBtn.onclick = () => this.downloadBatchQr(qrWrapper, deviceId);
+
+            card.appendChild(qrWrapper);
+            card.appendChild(idText);
+            card.appendChild(nameText);
+            card.appendChild(downloadBtn);
+
+            resultsContainer.appendChild(card);
+
+            new QRCode(qrWrapper, {
+                text: deviceId,
+                width: 120,
+                height: 120,
+                colorDark: '#2c3e50',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+        });
+    }
+
+    /**
+     * 일괄 QR 다운로드
+     */
+    downloadBatchQr(qrWrapper, deviceId) {
+        const img = qrWrapper.querySelector('img');
+        const canvas = qrWrapper.querySelector('canvas');
 
         const link = document.createElement('a');
         link.download = `QR_${deviceId}.png`;
