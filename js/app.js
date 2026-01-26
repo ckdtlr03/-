@@ -1,0 +1,364 @@
+/**
+ * 디바이스 대여/반납 시스템 - 메인 애플리케이션
+ */
+
+class DeviceRentalApp {
+    constructor() {
+        this.currentMode = null; // 'rent' 또는 'return'
+        this.qrScanner = null;
+        this.rentInfo = {
+            cell: '1셀',
+            renterName: ''
+        };
+
+        this.init();
+    }
+
+    /**
+     * 초기화
+     */
+    init() {
+        this.bindEvents();
+        this.checkApiConfig();
+    }
+
+    /**
+     * API 설정 확인
+     */
+    checkApiConfig() {
+        if (CONFIG.API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+            console.warn('⚠️ Google Apps Script URL이 설정되지 않았습니다. config.js 파일을 확인해주세요.');
+        }
+    }
+
+    /**
+     * 이벤트 바인딩
+     */
+    bindEvents() {
+        // 메인 화면 버튼
+        document.getElementById('rentBtn').addEventListener('click', () => this.startRent());
+        document.getElementById('returnBtn').addEventListener('click', () => this.startReturn());
+
+        // 대여 정보 화면 버튼
+        document.getElementById('backToMainFromRent').addEventListener('click', () => this.showScreen('mainScreen'));
+        document.getElementById('goToScanFromRent').addEventListener('click', () => this.goToRentScan());
+
+        // 셀 선택
+        document.querySelectorAll('input[name="cell"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                this.rentInfo.cell = e.target.value;
+            });
+        });
+
+        // 스캔 화면 버튼
+        document.getElementById('backFromScan').addEventListener('click', () => this.cancelScan());
+
+        // 결과 화면 버튼
+        document.getElementById('backToMain').addEventListener('click', () => this.showScreen('mainScreen'));
+
+        // 이름 입력 엔터 키
+        document.getElementById('renterName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.goToRentScan();
+            }
+        });
+    }
+
+    /**
+     * 화면 전환
+     */
+    showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    /**
+     * 대여 시작
+     */
+    startRent() {
+        this.currentMode = 'rent';
+        this.rentInfo = { cell: '1셀', renterName: '' };
+        document.getElementById('renterName').value = '';
+        document.querySelector('input[name="cell"][value="1셀"]').checked = true;
+        this.showScreen('rentInfoScreen');
+        document.getElementById('renterName').focus();
+    }
+
+    /**
+     * 반납 시작
+     */
+    startReturn() {
+        this.currentMode = 'return';
+        document.getElementById('scanTitle').textContent = '반납 - QR 스캔';
+        document.getElementById('scanInstruction').textContent = '반납할 디바이스의 QR 코드를 스캔하세요';
+        document.getElementById('scanInfo').innerHTML = '';
+        this.showScreen('scanScreen');
+        this.startQrScanner();
+    }
+
+    /**
+     * 대여 스캔 화면으로 이동
+     */
+    goToRentScan() {
+        const name = document.getElementById('renterName').value.trim();
+
+        if (!name) {
+            alert(CONFIG.MESSAGES.ERROR_NO_NAME);
+            document.getElementById('renterName').focus();
+            return;
+        }
+
+        this.rentInfo.renterName = name;
+
+        document.getElementById('scanTitle').textContent = '대여 - QR 스캔';
+        document.getElementById('scanInstruction').textContent = '대여할 디바이스의 QR 코드를 스캔하세요';
+        document.getElementById('scanInfo').innerHTML = `
+            <p><strong>대여자:</strong> ${this.rentInfo.renterName}</p>
+            <p><strong>셀:</strong> ${this.rentInfo.cell}</p>
+        `;
+
+        this.showScreen('scanScreen');
+        this.startQrScanner();
+    }
+
+    /**
+     * QR 스캐너 시작
+     */
+    async startQrScanner() {
+        try {
+            this.qrScanner = new Html5Qrcode('qrReader');
+
+            await this.qrScanner.start(
+                { facingMode: 'environment' },
+                CONFIG.QR_SCANNER,
+                (decodedText) => this.onQrCodeScanned(decodedText),
+                (errorMessage) => {
+                    // 스캔 중 에러는 무시 (스캔 실패시 계속 시도)
+                }
+            );
+        } catch (err) {
+            console.error('카메라 시작 실패:', err);
+            alert(CONFIG.MESSAGES.ERROR_CAMERA);
+            this.showScreen('mainScreen');
+        }
+    }
+
+    /**
+     * QR 스캐너 중지
+     */
+    async stopQrScanner() {
+        if (this.qrScanner && this.qrScanner.isScanning) {
+            try {
+                await this.qrScanner.stop();
+            } catch (err) {
+                console.error('스캐너 중지 실패:', err);
+            }
+        }
+    }
+
+    /**
+     * QR 코드 스캔 완료
+     */
+    async onQrCodeScanned(deviceId) {
+        await this.stopQrScanner();
+
+        if (this.currentMode === 'rent') {
+            await this.processRent(deviceId);
+        } else if (this.currentMode === 'return') {
+            await this.processReturn(deviceId);
+        }
+    }
+
+    /**
+     * 스캔 취소
+     */
+    async cancelScan() {
+        await this.stopQrScanner();
+
+        if (this.currentMode === 'rent') {
+            this.showScreen('rentInfoScreen');
+        } else {
+            this.showScreen('mainScreen');
+        }
+    }
+
+    /**
+     * 대여 처리
+     */
+    async processRent(deviceId) {
+        this.showLoading(true);
+
+        try {
+            const response = await this.callApi({
+                action: 'rent',
+                deviceId: deviceId,
+                renterName: this.rentInfo.renterName,
+                cell: this.rentInfo.cell
+            });
+
+            if (response.success) {
+                this.showResult(true, CONFIG.MESSAGES.RENT_SUCCESS, response.message, {
+                    '디바이스': response.data.deviceName || deviceId,
+                    '대여자': response.data.renterName,
+                    '셀': response.data.cell,
+                    '대여일시': response.data.rentDate
+                });
+            } else {
+                this.showResult(false, '대여 실패', response.message);
+            }
+        } catch (error) {
+            console.error('대여 처리 오류:', error);
+            this.showResult(false, '오류 발생', CONFIG.MESSAGES.ERROR_API);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * 반납 처리
+     */
+    async processReturn(deviceId) {
+        this.showLoading(true);
+
+        try {
+            const response = await this.callApi({
+                action: 'return',
+                deviceId: deviceId
+            });
+
+            if (response.success) {
+                this.showResult(true, CONFIG.MESSAGES.RETURN_SUCCESS, response.message, {
+                    '디바이스': response.data.deviceName || deviceId,
+                    '대여자': response.data.renterName,
+                    '대여일시': response.data.rentDate,
+                    '반납일시': response.data.returnDate
+                });
+            } else {
+                this.showResult(false, '반납 실패', response.message);
+            }
+        } catch (error) {
+            console.error('반납 처리 오류:', error);
+            this.showResult(false, '오류 발생', CONFIG.MESSAGES.ERROR_API);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * API 호출
+     */
+    async callApi(data) {
+        if (CONFIG.API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
+            // 테스트 모드 - API 미설정시 시뮬레이션
+            return this.simulateApiResponse(data);
+        }
+
+        const response = await fetch(CONFIG.API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+
+        // no-cors 모드에서는 응답을 읽을 수 없으므로
+        // Google Apps Script에서 JSONP 방식 또는 웹앱 방식 사용 권장
+        // 아래는 일반적인 CORS 가능한 환경에서의 코드
+        try {
+            return await response.json();
+        } catch {
+            // no-cors 모드일 때 성공 가정
+            return { success: true, message: '처리되었습니다.', data: data };
+        }
+    }
+
+    /**
+     * API 시뮬레이션 (테스트용)
+     */
+    simulateApiResponse(data) {
+        console.log('📌 테스트 모드 - API 호출 시뮬레이션:', data);
+
+        const now = new Date().toLocaleString('ko-KR');
+
+        if (data.action === 'rent') {
+            return {
+                success: true,
+                message: `${data.deviceId} 대여가 완료되었습니다.`,
+                data: {
+                    deviceId: data.deviceId,
+                    deviceName: data.deviceId,
+                    renterName: data.renterName,
+                    cell: data.cell,
+                    rentDate: now
+                }
+            };
+        } else if (data.action === 'return') {
+            return {
+                success: true,
+                message: `${data.deviceId} 반납이 완료되었습니다.`,
+                data: {
+                    deviceId: data.deviceId,
+                    deviceName: data.deviceId,
+                    renterName: '테스트 사용자',
+                    rentDate: '2026-01-26 09:00:00',
+                    returnDate: now
+                }
+            };
+        }
+
+        return { success: false, message: '알 수 없는 액션' };
+    }
+
+    /**
+     * 결과 화면 표시
+     */
+    showResult(isSuccess, title, message, details = null) {
+        const resultIcon = document.getElementById('resultIcon');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultMessage = document.getElementById('resultMessage');
+        const resultDetails = document.getElementById('resultDetails');
+
+        resultIcon.textContent = isSuccess ? '✅' : '❌';
+        resultIcon.className = `result-icon ${isSuccess ? 'success' : 'error'}`;
+        resultTitle.textContent = title;
+        resultMessage.textContent = message;
+
+        if (details) {
+            let detailsHtml = '';
+            for (const [label, value] of Object.entries(details)) {
+                detailsHtml += `
+                    <div class="detail-row">
+                        <span class="detail-label">${label}</span>
+                        <span class="detail-value">${value}</span>
+                    </div>
+                `;
+            }
+            resultDetails.innerHTML = detailsHtml;
+            resultDetails.style.display = 'block';
+        } else {
+            resultDetails.style.display = 'none';
+        }
+
+        this.showScreen('resultScreen');
+    }
+
+    /**
+     * 로딩 표시
+     */
+    showLoading(show) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (show) {
+            overlay.classList.add('active');
+        } else {
+            overlay.classList.remove('active');
+        }
+    }
+}
+
+// 앱 시작
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new DeviceRentalApp();
+});

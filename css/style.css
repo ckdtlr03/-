@@ -1,0 +1,471 @@
+/* 기본 설정 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --primary-color: #4A90D9;
+    --primary-dark: #357ABD;
+    --success-color: #27AE60;
+    --success-dark: #1E8449;
+    --danger-color: #E74C3C;
+    --warning-color: #F39C12;
+    --text-color: #2C3E50;
+    --text-light: #7F8C8D;
+    --bg-color: #F5F7FA;
+    --card-bg: #FFFFFF;
+    --border-color: #E1E8ED;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    min-height: 100vh;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 헤더 */
+.header {
+    text-align: center;
+    padding: 30px 0;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-color);
+    margin-bottom: 8px;
+}
+
+.header .subtitle {
+    font-size: 14px;
+    color: var(--text-light);
+    letter-spacing: 1px;
+}
+
+/* 화면 전환 */
+.screen {
+    display: none;
+    flex: 1;
+    animation: fadeIn 0.3s ease;
+}
+
+.screen.active {
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 메인 버튼 그룹 */
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+    justify-content: center;
+    padding: 20px 0;
+}
+
+.main-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 30px;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.main-btn:active {
+    transform: scale(0.98);
+}
+
+.rent-btn {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+}
+
+.rent-btn:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.return-btn {
+    background: linear-gradient(135deg, var(--success-color), var(--success-dark));
+    color: white;
+}
+
+.return-btn:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.btn-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.btn-text {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.btn-desc {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+/* 폼 컨테이너 */
+.form-container {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+}
+
+.form-container h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 24px;
+    color: var(--text-color);
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+/* 셀 선택 */
+.cell-selector {
+    display: flex;
+    gap: 15px;
+}
+
+.cell-option {
+    flex: 1;
+    cursor: pointer;
+}
+
+.cell-option input {
+    display: none;
+}
+
+.cell-label {
+    display: block;
+    text-align: center;
+    padding: 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.cell-option input:checked + .cell-label {
+    border-color: var(--primary-color);
+    background-color: rgba(74, 144, 217, 0.1);
+    color: var(--primary-color);
+}
+
+/* 입력 필드 */
+input[type="text"] {
+    width: 100%;
+    padding: 15px 20px;
+    font-size: 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+input[type="text"]:focus {
+    border-color: var(--primary-color);
+}
+
+input[type="text"]::placeholder {
+    color: var(--text-light);
+}
+
+/* 버튼 */
+.button-row {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.primary-btn, .secondary-btn {
+    flex: 1;
+    padding: 15px 25px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.primary-btn {
+    background: var(--primary-color);
+    color: white;
+}
+
+.primary-btn:hover {
+    background: var(--primary-dark);
+}
+
+.primary-btn:disabled {
+    background: var(--text-light);
+    cursor: not-allowed;
+}
+
+.secondary-btn {
+    background: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+}
+
+.secondary-btn:hover {
+    background: var(--border-color);
+}
+
+/* 스캔 화면 */
+.scan-container {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.scan-container h2 {
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.scan-instruction {
+    color: var(--text-light);
+    margin-bottom: 25px;
+    font-size: 14px;
+}
+
+#qrReader {
+    width: 100%;
+    max-width: 350px;
+    margin: 0 auto 20px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#qrReader video {
+    border-radius: 12px;
+}
+
+.scan-info {
+    background: var(--bg-color);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.scan-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.scan-info strong {
+    color: var(--primary-color);
+}
+
+/* 결과 화면 */
+.result-container {
+    background: var(--card-bg);
+    border-radius: 20px;
+    padding: 40px 30px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.result-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+}
+
+.result-icon.success {
+    color: var(--success-color);
+}
+
+.result-icon.error {
+    color: var(--danger-color);
+}
+
+.result-container h2 {
+    font-size: 28px;
+    margin-bottom: 15px;
+}
+
+.result-message {
+    color: var(--text-light);
+    font-size: 16px;
+    margin-bottom: 30px;
+}
+
+.result-details {
+    background: var(--bg-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 30px;
+    text-align: left;
+}
+
+.result-details .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.result-details .detail-row:last-child {
+    border-bottom: none;
+}
+
+.result-details .detail-label {
+    color: var(--text-light);
+    font-size: 14px;
+}
+
+.result-details .detail-value {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+/* 로딩 오버레이 */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    z-index: 1000;
+}
+
+.loading-overlay.active {
+    display: flex;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-overlay p {
+    color: white;
+    font-size: 16px;
+}
+
+/* 반응형 */
+@media (max-width: 480px) {
+    .container {
+        padding: 15px;
+    }
+
+    .header h1 {
+        font-size: 24px;
+    }
+
+    .main-btn {
+        padding: 30px 20px;
+    }
+
+    .btn-icon {
+        font-size: 40px;
+    }
+
+    .btn-text {
+        font-size: 24px;
+    }
+
+    .form-container, .scan-container, .result-container {
+        padding: 20px;
+    }
+}
+
+/* QR 리더 스타일 오버라이드 */
+#qrReader img[alt="Info icon"] {
+    display: none;
+}
+
+#qrReader__scan_region {
+    background: var(--bg-color) !important;
+}
+
+#qrReader__dashboard_section_csr button {
+    background: var(--primary-color) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+#qrReader__dashboard_section_csr select {
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    border: 2px solid var(--border-color) !important;
+}
