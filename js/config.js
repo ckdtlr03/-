@@ -6,7 +6,7 @@
 const CONFIG = {
     // Google Apps Script 웹 앱 URL (배포 후 생성되는 URL을 입력)
     // 예: 'https://script.google.com/macros/s/AKfycb.../exec'
-    API_URL: 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE',
+    API_URL: 'https://script.google.com/macros/s/AKfycbyTAXbNA-XUvRC3uD6oikBxC32QO7T7EWtZLNlLnNbQNQbX0Nart8gZWp0EzogAnIuE3w/exec',
 
     // QR 스캐너 설정
     QR_SCANNER: {
