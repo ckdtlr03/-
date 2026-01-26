@@ -535,3 +535,117 @@ input[type="text"]::placeholder {
     margin: 5px 0;
     font-size: 14px;
 }
+
+/* 탭 선택 */
+.tab-selector {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    background: var(--bg-color);
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-light);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab-btn.active {
+    border-color: var(--primary-color);
+    background: rgba(74, 144, 217, 0.1);
+    color: var(--primary-color);
+}
+
+/* 생성 섹션 */
+.gen-section {
+    display: none;
+}
+
+.gen-section.active {
+    display: block;
+}
+
+/* 일괄 생성 */
+.batch-textarea {
+    width: 100%;
+    padding: 15px;
+    font-size: 14px;
+    font-family: monospace;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    outline: none;
+    min-height: 120px;
+    resize: vertical;
+}
+
+.batch-textarea:focus {
+    border-color: var(--primary-color);
+}
+
+.help-text {
+    color: var(--text-light);
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+/* 일괄 결과 */
+.batch-results {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.qr-card {
+    background: var(--bg-color);
+    padding: 15px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.qr-card .qr-wrapper {
+    display: inline-block;
+    padding: 8px;
+    background: white;
+    border: 3px solid var(--text-color);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.qr-card .qr-wrapper img,
+.qr-card .qr-wrapper canvas {
+    display: block;
+}
+
+.qr-card .device-id {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-color);
+    margin-bottom: 3px;
+}
+
+.qr-card .device-name {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-bottom: 10px;
+}
+
+.qr-card .download-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: var(--success-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.qr-card .download-btn:hover {
+    background: var(--success-dark);
+}
