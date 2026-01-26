@@ -255,23 +255,20 @@ class DeviceRentalApp {
             return this.simulateApiResponse(data);
         }
 
-        const response = await fetch(CONFIG.API_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-
-        // no-cors 모드에서는 응답을 읽을 수 없으므로
-        // Google Apps Script에서 JSONP 방식 또는 웹앱 방식 사용 권장
-        // 아래는 일반적인 CORS 가능한 환경에서의 코드
         try {
-            return await response.json();
-        } catch {
-            // no-cors 모드일 때 성공 가정
-            return { success: true, message: '처리되었습니다.', data: data };
+            const response = await fetch(CONFIG.API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain',
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            return result;
+        } catch (error) {
+            console.error('API 호출 오류:', error);
+            throw error;
         }
     }
 
