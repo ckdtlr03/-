@@ -85,6 +85,17 @@ class DeviceRentalApp {
                 this.goToRentScan();
             }
         });
+
+        // QR 생성 관련 버튼
+        document.getElementById('menuBtn').addEventListener('click', () => this.openQrGenerator());
+        document.getElementById('backFromGenerator').addEventListener('click', () => this.showScreen('mainScreen'));
+        document.getElementById('generateQrBtn').addEventListener('click', () => this.generateQrCode());
+        document.getElementById('downloadQrBtn').addEventListener('click', () => this.downloadGeneratedQr());
+
+        // QR 생성 입력 엔터 키
+        document.getElementById('genDeviceId').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.generateQrCode();
+        });
     }
 
     /**
@@ -375,6 +386,69 @@ class DeviceRentalApp {
         } else {
             overlay.classList.remove('active');
         }
+    }
+
+    /**
+     * QR 생성 화면 열기
+     */
+    openQrGenerator() {
+        document.getElementById('genDeviceId').value = '';
+        document.getElementById('genDeviceName').value = '';
+        document.getElementById('qrResultArea').classList.remove('active');
+        document.getElementById('qrCodeDisplay').innerHTML = '';
+        this.showScreen('qrGeneratorScreen');
+        document.getElementById('genDeviceId').focus();
+    }
+
+    /**
+     * QR 코드 생성
+     */
+    generateQrCode() {
+        const deviceId = document.getElementById('genDeviceId').value.trim();
+        const deviceName = document.getElementById('genDeviceName').value.trim() || deviceId;
+
+        if (!deviceId) {
+            alert('디바이스 ID를 입력해주세요.');
+            document.getElementById('genDeviceId').focus();
+            return;
+        }
+
+        const qrContainer = document.getElementById('qrCodeDisplay');
+        qrContainer.innerHTML = '';
+
+        new QRCode(qrContainer, {
+            text: deviceId,
+            width: 200,
+            height: 200,
+            colorDark: '#2c3e50',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.H
+        });
+
+        document.getElementById('qrResultId').textContent = deviceId;
+        document.getElementById('qrResultName').textContent = deviceName;
+        document.getElementById('qrResultArea').classList.add('active');
+    }
+
+    /**
+     * 생성된 QR 코드 다운로드
+     */
+    downloadGeneratedQr() {
+        const qrContainer = document.getElementById('qrCodeDisplay');
+        const img = qrContainer.querySelector('img');
+        const canvas = qrContainer.querySelector('canvas');
+        const deviceId = document.getElementById('qrResultId').textContent;
+
+        const link = document.createElement('a');
+        link.download = `QR_${deviceId}.png`;
+
+        if (canvas) {
+            link.href = canvas.toDataURL('image/png');
+        } else if (img) {
+            link.href = img.src;
+        }
+
+        link.click();
     }
 }
 
