@@ -32,6 +32,29 @@ class DeviceRentalApp {
     }
 
     /**
+     * 날짜 형식 변환
+     */
+    formatDate(dateString) {
+        if (!dateString) return '-';
+
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return dateString;
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+
+            return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        } catch {
+            return dateString;
+        }
+    }
+
+    /**
      * 이벤트 바인딩
      */
     bindEvents() {
@@ -203,7 +226,7 @@ class DeviceRentalApp {
                     '디바이스': response.data.deviceName || deviceId,
                     '대여자': response.data.renterName,
                     '셀': response.data.cell,
-                    '대여일시': response.data.rentDate
+                    '대여일시': this.formatDate(response.data.rentDate)
                 });
             } else {
                 this.showResult(false, '대여 실패', response.message);
@@ -232,8 +255,8 @@ class DeviceRentalApp {
                 this.showResult(true, CONFIG.MESSAGES.RETURN_SUCCESS, response.message, {
                     '디바이스': response.data.deviceName || deviceId,
                     '대여자': response.data.renterName,
-                    '대여일시': response.data.rentDate,
-                    '반납일시': response.data.returnDate
+                    '대여일시': this.formatDate(response.data.rentDate),
+                    '반납일시': this.formatDate(response.data.returnDate)
                 });
             } else {
                 this.showResult(false, '반납 실패', response.message);
