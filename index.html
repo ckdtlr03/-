@@ -7,11 +7,21 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- QR 스캐너 라이브러리 -->
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- QR 코드 생성 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
     <div class="container">
         <!-- 헤더 -->
         <header class="header">
+            <button id="menuBtn" class="menu-btn" title="QR 코드 생성">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                </svg>
+            </button>
             <h1>디바이스 대여/반납</h1>
             <p class="subtitle">Device Rental System</p>
         </header>
@@ -91,6 +101,37 @@
                 </div>
 
                 <button id="backToMain" class="primary-btn">확인</button>
+            </div>
+        </div>
+
+        <!-- QR 생성 화면 -->
+        <div id="qrGeneratorScreen" class="screen">
+            <div class="form-container">
+                <h2>QR 코드 생성</h2>
+
+                <div class="form-group">
+                    <label for="genDeviceId">디바이스 ID</label>
+                    <input type="text" id="genDeviceId" placeholder="예: DEV001">
+                </div>
+
+                <div class="form-group">
+                    <label for="genDeviceName">디바이스 이름 (선택)</label>
+                    <input type="text" id="genDeviceName" placeholder="예: iPhone 15 Pro">
+                </div>
+
+                <div class="button-row">
+                    <button id="backFromGenerator" class="secondary-btn">뒤로</button>
+                    <button id="generateQrBtn" class="primary-btn">생성</button>
+                </div>
+
+                <div id="qrResultArea" class="qr-result-area">
+                    <div id="qrCodeDisplay"></div>
+                    <div class="qr-result-info">
+                        <p><strong>ID:</strong> <span id="qrResultId"></span></p>
+                        <p><strong>이름:</strong> <span id="qrResultName"></span></p>
+                    </div>
+                    <button id="downloadQrBtn" class="primary-btn">다운로드</button>
+                </div>
             </div>
         </div>
 
