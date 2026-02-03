@@ -214,32 +214,56 @@ class DeviceRentalApp {
      * QR 코드 내용 파싱 (ID|이름 형식)
      */
     parseQrContent(qrContent) {
-        if (qrContent.includes('|')) {
-            const parts = qrContent.split('|');
+        try {
+            // null/undefined 체크
+            if (!qrContent || typeof qrContent !== 'string') {
+                console.error('QR 내용이 비어있음:', qrContent);
+                return { deviceId: 'UNKNOWN', deviceName: 'UNKNOWN' };
+            }
+
+            // 줄바꿈, 캐리지리턴, 탭 등 제거
+            const content = qrContent.trim().replace(/[\r\n\t]/g, '');
+
+            console.log('파싱할 QR 내용:', content);
+
+            if (content.includes('|')) {
+                const parts = content.split('|');
+                const deviceId = (parts[0] || '').trim();
+                const deviceName = (parts[1] || parts[0] || '').trim();
+                return {
+                    deviceId: deviceId || 'UNKNOWN',
+                    deviceName: deviceName || 'UNKNOWN'
+                };
+            }
+            // 기존 QR 코드 호환 (ID만 있는 경우)
             return {
-                deviceId: parts[0],
-                deviceName: parts[1] || parts[0]
+                deviceId: content,
+                deviceName: content
             };
+        } catch (error) {
+            console.error('QR 파싱 오류:', error);
+            return { deviceId: 'UNKNOWN', deviceName: 'UNKNOWN' };
         }
-        // 기존 QR 코드 호환 (ID만 있는 경우)
-        return {
-            deviceId: qrContent,
-            deviceName: qrContent
-        };
     }
 
     /**
      * QR 코드 스캔 완료
      */
     async onQrCodeScanned(qrContent) {
-        await this.stopQrScanner();
+        try {
+            await this.stopQrScanner();
 
-        const deviceInfo = this.parseQrContent(qrContent);
+            const deviceInfo = this.parseQrContent(qrContent);
+            console.log('스캔된 QR:', qrContent, '파싱 결과:', deviceInfo);
 
-        if (this.currentMode === 'rent') {
-            await this.processRent(deviceInfo);
-        } else if (this.currentMode === 'return') {
-            await this.processReturn(deviceInfo);
+            if (this.currentMode === 'rent') {
+                await this.processRent(deviceInfo);
+            } else if (this.currentMode === 'return') {
+                await this.processReturn(deviceInfo);
+            }
+        } catch (error) {
+            console.error('QR 스캔 처리 오류:', error);
+            this.showResult(false, '오류 발생', 'QR 코드 처리 중 오류가 발생했습니다.');
         }
     }
 
@@ -271,16 +295,17 @@ class DeviceRentalApp {
                 cell: this.rentInfo.cell
             });
 
-            if (response.success) {
-                this.showResult(true, CONFIG.MESSAGES.RENT_SUCCESS, response.message, {
+            if (response && response.success) {
+                const data = response.data || {};
+                this.showResult(true, CONFIG.MESSAGES.RENT_SUCCESS, response.message || '대여 완료', {
                     '디바이스 ID': deviceInfo.deviceId,
                     '디바이스명': deviceInfo.deviceName,
-                    '대여자': response.data.renterName,
-                    '셀': response.data.cell,
-                    '대여일시': this.formatDate(response.data.rentDate)
+                    '대여자': data.renterName || this.rentInfo.renterName,
+                    '셀': data.cell || this.rentInfo.cell,
+                    '대여일시': this.formatDate(data.rentDate)
                 });
             } else {
-                this.showResult(false, '대여 실패', response.message);
+                this.showResult(false, '대여 실패', (response && response.message) || '알 수 없는 오류');
             }
         } catch (error) {
             console.error('대여 처리 오류:', error);
@@ -303,16 +328,17 @@ class DeviceRentalApp {
                 deviceName: deviceInfo.deviceName
             });
 
-            if (response.success) {
-                this.showResult(true, CONFIG.MESSAGES.RETURN_SUCCESS, response.message, {
+            if (response && response.success) {
+                const data = response.data || {};
+                this.showResult(true, CONFIG.MESSAGES.RETURN_SUCCESS, response.message || '반납 완료', {
                     '디바이스 ID': deviceInfo.deviceId,
                     '디바이스명': deviceInfo.deviceName,
-                    '대여자': response.data.renterName,
-                    '대여일시': this.formatDate(response.data.rentDate),
-                    '반납일시': this.formatDate(response.data.returnDate)
+                    '대여자': data.renterName || '-',
+                    '대여일시': this.formatDate(data.rentDate),
+                    '반납일시': this.formatDate(data.returnDate)
                 });
             } else {
-                this.showResult(false, '반납 실패', response.message);
+                this.showResult(false, '반납 실패', (response && response.message) || '알 수 없는 오류');
             }
         } catch (error) {
             console.error('반납 처리 오류:', error);
@@ -525,14 +551,15 @@ class DeviceRentalApp {
             return;
         }
 
-        const lines = input.split('\n').filter(line => line.trim());
+        // 줄바꿈으로 분리 (Windows/Mac/Linux 모두 지원)
+        const lines = input.split(/\r?\n/).filter(line => line.trim());
         const resultsContainer = document.getElementById('batchResultArea');
         resultsContainer.innerHTML = '';
 
         lines.forEach((line, index) => {
             const parts = line.split(',').map(p => p.trim());
-            const deviceId = parts[0];
-            const deviceName = parts[1] || deviceId;
+            const deviceId = (parts[0] || '').trim();
+            const deviceName = (parts[1] || deviceId).trim();
 
             if (!deviceId) return;
 
@@ -563,8 +590,9 @@ class DeviceRentalApp {
 
             resultsContainer.appendChild(card);
 
-            // QR 코드에 ID|이름 형식으로 저장
-            const qrContent = `${deviceId}|${deviceName}`;
+            // QR 코드에 ID|이름 형식으로 저장 (특수문자 제거)
+            const qrContent = `${deviceId}|${deviceName}`.replace(/[\r\n\t]/g, '');
+            console.log('생성된 QR 내용:', qrContent);
 
             new QRCode(qrWrapper, {
                 text: qrContent,
