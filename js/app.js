@@ -185,7 +185,18 @@ class DeviceRentalApp {
             await this.qrScanner.start(
                 { facingMode: 'environment' },
                 CONFIG.QR_SCANNER,
-                (decodedText) => this.onQrCodeScanned(decodedText),
+                (decodedText) => {
+                    // 콜백을 try-catch로 감싸고 async 처리
+                    try {
+                        this.onQrCodeScanned(decodedText).catch(err => {
+                            console.error('[DEBUG] async 오류:', err);
+                            alert('처리 오류: ' + (err.message || err));
+                        });
+                    } catch (callbackError) {
+                        console.error('[DEBUG] 콜백 오류:', callbackError);
+                        alert('스캔 콜백 오류: ' + (callbackError.message || callbackError));
+                    }
+                },
                 (errorMessage) => {
                     // 스캔 중 에러는 무시 (스캔 실패시 계속 시도)
                 }
@@ -251,19 +262,26 @@ class DeviceRentalApp {
      */
     async onQrCodeScanned(qrContent) {
         try {
+            // 디버깅: 스캔 시작
+            console.log('[DEBUG] QR 스캔 시작:', qrContent);
+
             await this.stopQrScanner();
+            console.log('[DEBUG] 스캐너 중지 완료');
 
             const deviceInfo = this.parseQrContent(qrContent);
-            console.log('스캔된 QR:', qrContent, '파싱 결과:', deviceInfo);
+            console.log('[DEBUG] 파싱 완료:', deviceInfo);
 
             if (this.currentMode === 'rent') {
+                console.log('[DEBUG] 대여 처리 시작');
                 await this.processRent(deviceInfo);
             } else if (this.currentMode === 'return') {
+                console.log('[DEBUG] 반납 처리 시작');
                 await this.processReturn(deviceInfo);
             }
         } catch (error) {
-            console.error('QR 스캔 처리 오류:', error);
-            this.showResult(false, '오류 발생', 'QR 코드 처리 중 오류가 발생했습니다.');
+            console.error('[DEBUG] QR 스캔 오류:', error);
+            alert('오류 발생: ' + (error.message || error.toString()));
+            this.showResult(false, '오류 발생', 'QR 코드 처리 중 오류가 발생했습니다: ' + (error.message || ''));
         }
     }
 
