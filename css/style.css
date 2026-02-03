@@ -146,6 +146,26 @@ body {
     transform: translateY(-2px);
 }
 
+.history-btn {
+    background: linear-gradient(135deg, #8E44AD, #6C3483);
+    color: white;
+    padding: 25px 20px;
+}
+
+.history-btn:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.history-btn .btn-icon {
+    font-size: 36px;
+    margin-bottom: 10px;
+}
+
+.history-btn .btn-text {
+    font-size: 22px;
+}
+
 .btn-icon {
     font-size: 48px;
     margin-bottom: 15px;
@@ -154,12 +174,6 @@ body {
 .btn-text {
     font-size: 28px;
     font-weight: 700;
-    margin-bottom: 8px;
-}
-
-.btn-desc {
-    font-size: 14px;
-    opacity: 0.9;
 }
 
 /* 폼 컨테이너 */
