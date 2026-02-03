@@ -47,25 +47,15 @@ body {
 }
 
 .header h1 {
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 700;
     color: var(--text-color);
-    margin-bottom: 8px;
-    padding-right: 80px;
-}
-
-.header .subtitle {
-    font-size: 14px;
-    color: var(--text-light);
-    letter-spacing: 1px;
+    margin-bottom: 12px;
 }
 
 /* 메뉴 버튼 */
 .menu-btn {
-    position: absolute;
-    top: 30px;
-    right: 0;
-    padding: 8px 16px;
+    padding: 8px 20px;
     border: none;
     background: var(--card-bg);
     border-radius: 8px;
@@ -454,14 +444,7 @@ input[type="text"]::placeholder {
     }
 
     .header h1 {
-        font-size: 20px;
-        padding-right: 70px;
-    }
-
-    .menu-btn {
-        padding: 6px 12px;
-        font-size: 12px;
-        top: 25px;
+        font-size: 24px;
     }
 
     .main-btn {
