@@ -9,7 +9,7 @@ const CONFIG = {
     API_URL: 'https://script.google.com/macros/s/AKfycbyTAXbNA-XUvRC3uD6oikBxC32QO7T7EWtZLNlLnNbQNQbX0Nart8gZWp0EzogAnIuE3w/exec',
 
     // Google 스프레드시트 URL (대여 이력 버튼 클릭 시 열림)
-    SPREADSHEET_URL: 'https://docs.google.com/spreadsheets/d/1k6DktYgAj8QYTMlg5zReOiUiPNkfuxdeRuTqRUc4lMA/edit?gid=1857725989#gid=1857725989',
+    SPREADSHEET_URL: 'https://docs.google.com/spreadsheets/d/1k6DktYgAj8QYTMlg5zReOiUiPNkfuxdeRuTqRUc4lMA/edit?gid=651998571#gid=651998571',
 
     // QR 스캐너 설정
     QR_SCANNER: {
