@@ -61,6 +61,7 @@ class DeviceRentalApp {
         // 메인 화면 버튼
         document.getElementById('rentBtn').addEventListener('click', () => this.startRent());
         document.getElementById('returnBtn').addEventListener('click', () => this.startReturn());
+        document.getElementById('historyBtn').addEventListener('click', () => this.openHistory());
 
         // 대여 정보 화면 버튼
         document.getElementById('backToMainFromRent').addEventListener('click', () => this.showScreen('mainScreen'));
@@ -136,6 +137,17 @@ class DeviceRentalApp {
         document.getElementById('scanInfo').innerHTML = '';
         this.showScreen('scanScreen');
         this.startQrScanner();
+    }
+
+    /**
+     * 대여 이력 열기
+     */
+    openHistory() {
+        if (CONFIG.SPREADSHEET_URL && !CONFIG.SPREADSHEET_URL.includes('여기에_스프레드시트_ID_입력')) {
+            window.open(CONFIG.SPREADSHEET_URL, '_blank');
+        } else {
+            alert('스프레드시트 URL이 설정되지 않았습니다. config.js를 확인해주세요.');
+        }
     }
 
     /**
