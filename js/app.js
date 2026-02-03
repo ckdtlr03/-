@@ -287,7 +287,7 @@ class DeviceRentalApp {
      */
     async onQrCodeScanned(qrContent) {
         // 디버깅 모드: 각 단계마다 alert 표시
-        const DEBUG_ALERT = true;
+        const DEBUG_ALERT = false;
 
         try {
             if (DEBUG_ALERT) alert('1. QR 인식됨: ' + qrContent);
