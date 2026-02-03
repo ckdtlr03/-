@@ -223,6 +223,7 @@ class DeviceRentalApp {
 
     /**
      * QR 코드 내용 파싱 (ID|이름 형식)
+     * URL 인코딩된 형식과 일반 형식 모두 지원
      */
     parseQrContent(qrContent) {
         try {
@@ -232,10 +233,34 @@ class DeviceRentalApp {
                 return { deviceId: 'UNKNOWN', deviceName: 'UNKNOWN' };
             }
 
-            // 줄바꿈, 캐리지리턴, 탭 등 제거
-            const content = qrContent.trim().replace(/[\r\n\t]/g, '');
+            let content = qrContent.trim();
+            console.log('원본 QR 내용:', content);
 
-            console.log('파싱할 QR 내용:', content);
+            // URL 인코딩 여부 확인 (%로 시작하는 인코딩 패턴)
+            if (content.includes('%')) {
+                try {
+                    content = decodeURIComponent(content);
+                    console.log('URL 디코딩 완료:', content);
+                } catch (e) {
+                    console.log('URL 디코딩 실패, 원본 사용');
+                }
+            }
+
+            // 다양한 BOM 형태 제거
+            content = content
+                .replace(/^\uFEFF/, '')           // UTF-16 BOM
+                .replace(/^\xEF\xBB\xBF/, '')     // UTF-8 BOM (raw bytes)
+                .replace(/^ï»¿/, '')              // UTF-8 BOM as Latin-1
+                .replace(/^ï»/, '')               // 부분 BOM
+                .replace(/^�ｿ/, '')              // BOM 깨진 형태 1
+                .replace(/^�/, '')               // BOM 깨진 형태 2
+                .replace(/[\r\n\t\u0000-\u001F]/g, '')  // 제어문자 제거
+                .trim();
+
+            // 앞쪽의 깨진 문자들 제거 (첫 번째 영숫자나 한글이 나올 때까지)
+            content = content.replace(/^[^\w\uAC00-\uD7AF]+/, '');
+
+            console.log('정제된 QR 내용:', content);
 
             if (content.includes('|')) {
                 const parts = content.split('|');
@@ -505,8 +530,9 @@ class DeviceRentalApp {
         const qrContainer = document.getElementById('qrCodeDisplay');
         qrContainer.innerHTML = '';
 
-        // QR 코드에 ID|이름 형식으로 저장
-        const qrContent = `${deviceId}|${deviceName}`;
+        // QR 코드에 URL 인코딩하여 저장 (한글 등 특수문자 안전하게 처리)
+        const qrContent = encodeURIComponent(`${deviceId}|${deviceName}`);
+        console.log('생성된 QR 내용 (인코딩):', qrContent);
 
         new QRCode(qrContainer, {
             text: qrContent,
@@ -611,9 +637,9 @@ class DeviceRentalApp {
 
             resultsContainer.appendChild(card);
 
-            // QR 코드에 ID|이름 형식으로 저장 (특수문자 제거)
-            const qrContent = `${deviceId}|${deviceName}`.replace(/[\r\n\t]/g, '');
-            console.log('생성된 QR 내용:', qrContent);
+            // QR 코드에 URL 인코딩하여 저장 (한글 등 특수문자 안전하게 처리)
+            const qrContent = encodeURIComponent(`${deviceId}|${deviceName}`);
+            console.log('생성된 QR 내용 (인코딩):', qrContent);
 
             new QRCode(qrWrapper, {
                 text: qrContent,
