@@ -6,7 +6,7 @@
 const CONFIG = {
     // Google Apps Script 웹 앱 URL (배포 후 생성되는 URL을 입력)
     // 예: 'https://script.google.com/macros/s/AKfycb.../exec'
-    API_URL: 'https://script.google.com/macros/s/AKfycbyTAXbNA-XUvRC3uD6oikBxC32QO7T7EWtZLNlLnNbQNQbX0Nart8gZWp0EzogAnIuE3w/exec',
+    API_URL: 'https://script.google.com/macros/s/AKfycbx8JwK6bx8SfFiV1V5M7EueFGoWt8PGcYVk7p9StjEe12h-i7dXRS-ZMOZx7aDEqGKJ4g/exec',
 
     // Google 스프레드시트 URL (대여 이력 버튼 클릭 시 열림)
     SPREADSHEET_URL: 'https://docs.google.com/spreadsheets/d/1k6DktYgAj8QYTMlg5zReOiUiPNkfuxdeRuTqRUc4lMA/edit?usp=sharing',
