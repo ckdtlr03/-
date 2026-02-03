@@ -261,25 +261,28 @@ class DeviceRentalApp {
      * QR 코드 스캔 완료
      */
     async onQrCodeScanned(qrContent) {
+        // 디버깅 모드: 각 단계마다 alert 표시
+        const DEBUG_ALERT = true;
+
         try {
-            // 디버깅: 스캔 시작
-            console.log('[DEBUG] QR 스캔 시작:', qrContent);
+            if (DEBUG_ALERT) alert('1. QR 인식됨: ' + qrContent);
 
             await this.stopQrScanner();
-            console.log('[DEBUG] 스캐너 중지 완료');
+            if (DEBUG_ALERT) alert('2. 스캐너 중지 완료');
 
             const deviceInfo = this.parseQrContent(qrContent);
-            console.log('[DEBUG] 파싱 완료:', deviceInfo);
+            if (DEBUG_ALERT) alert('3. 파싱 완료: ID=' + deviceInfo.deviceId + ', 이름=' + deviceInfo.deviceName);
 
             if (this.currentMode === 'rent') {
-                console.log('[DEBUG] 대여 처리 시작');
+                if (DEBUG_ALERT) alert('4. 대여 처리 시작');
                 await this.processRent(deviceInfo);
+                if (DEBUG_ALERT) alert('5. 대여 처리 완료');
             } else if (this.currentMode === 'return') {
-                console.log('[DEBUG] 반납 처리 시작');
+                if (DEBUG_ALERT) alert('4. 반납 처리 시작');
                 await this.processReturn(deviceInfo);
+                if (DEBUG_ALERT) alert('5. 반납 처리 완료');
             }
         } catch (error) {
-            console.error('[DEBUG] QR 스캔 오류:', error);
             alert('오류 발생: ' + (error.message || error.toString()));
             this.showResult(false, '오류 발생', 'QR 코드 처리 중 오류가 발생했습니다: ' + (error.message || ''));
         }
