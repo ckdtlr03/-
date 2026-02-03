@@ -211,15 +211,35 @@ class DeviceRentalApp {
     }
 
     /**
+     * QR 코드 내용 파싱 (ID|이름 형식)
+     */
+    parseQrContent(qrContent) {
+        if (qrContent.includes('|')) {
+            const parts = qrContent.split('|');
+            return {
+                deviceId: parts[0],
+                deviceName: parts[1] || parts[0]
+            };
+        }
+        // 기존 QR 코드 호환 (ID만 있는 경우)
+        return {
+            deviceId: qrContent,
+            deviceName: qrContent
+        };
+    }
+
+    /**
      * QR 코드 스캔 완료
      */
-    async onQrCodeScanned(deviceId) {
+    async onQrCodeScanned(qrContent) {
         await this.stopQrScanner();
 
+        const deviceInfo = this.parseQrContent(qrContent);
+
         if (this.currentMode === 'rent') {
-            await this.processRent(deviceId);
+            await this.processRent(deviceInfo);
         } else if (this.currentMode === 'return') {
-            await this.processReturn(deviceId);
+            await this.processReturn(deviceInfo);
         }
     }
 
@@ -239,20 +259,22 @@ class DeviceRentalApp {
     /**
      * 대여 처리
      */
-    async processRent(deviceId) {
+    async processRent(deviceInfo) {
         this.showLoading(true);
 
         try {
             const response = await this.callApi({
                 action: 'rent',
-                deviceId: deviceId,
+                deviceId: deviceInfo.deviceId,
+                deviceName: deviceInfo.deviceName,
                 renterName: this.rentInfo.renterName,
                 cell: this.rentInfo.cell
             });
 
             if (response.success) {
                 this.showResult(true, CONFIG.MESSAGES.RENT_SUCCESS, response.message, {
-                    '디바이스': response.data.deviceName || deviceId,
+                    '디바이스 ID': deviceInfo.deviceId,
+                    '디바이스명': deviceInfo.deviceName,
                     '대여자': response.data.renterName,
                     '셀': response.data.cell,
                     '대여일시': this.formatDate(response.data.rentDate)
@@ -271,18 +293,20 @@ class DeviceRentalApp {
     /**
      * 반납 처리
      */
-    async processReturn(deviceId) {
+    async processReturn(deviceInfo) {
         this.showLoading(true);
 
         try {
             const response = await this.callApi({
                 action: 'return',
-                deviceId: deviceId
+                deviceId: deviceInfo.deviceId,
+                deviceName: deviceInfo.deviceName
             });
 
             if (response.success) {
                 this.showResult(true, CONFIG.MESSAGES.RETURN_SUCCESS, response.message, {
-                    '디바이스': response.data.deviceName || deviceId,
+                    '디바이스 ID': deviceInfo.deviceId,
+                    '디바이스명': deviceInfo.deviceName,
                     '대여자': response.data.renterName,
                     '대여일시': this.formatDate(response.data.rentDate),
                     '반납일시': this.formatDate(response.data.returnDate)
@@ -434,8 +458,11 @@ class DeviceRentalApp {
         const qrContainer = document.getElementById('qrCodeDisplay');
         qrContainer.innerHTML = '';
 
+        // QR 코드에 ID|이름 형식으로 저장
+        const qrContent = `${deviceId}|${deviceName}`;
+
         new QRCode(qrContainer, {
-            text: deviceId,
+            text: qrContent,
             width: 200,
             height: 200,
             colorDark: '#2c3e50',
@@ -536,8 +563,11 @@ class DeviceRentalApp {
 
             resultsContainer.appendChild(card);
 
+            // QR 코드에 ID|이름 형식으로 저장
+            const qrContent = `${deviceId}|${deviceName}`;
+
             new QRCode(qrWrapper, {
-                text: deviceId,
+                text: qrContent,
                 width: 120,
                 height: 120,
                 colorDark: '#2c3e50',
