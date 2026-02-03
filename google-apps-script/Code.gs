@@ -65,9 +65,8 @@ function processRent(data) {
     sheet.setFrozenRows(1);
   }
 
-  // 디바이스 정보 가져오기
-  const deviceInfo = getDeviceInfo(data.deviceId);
-  const deviceName = deviceInfo.success ? deviceInfo.deviceName : data.deviceId;
+  // 디바이스 이름: QR 코드에서 전달받은 값 우선 사용
+  const deviceName = data.deviceName || data.deviceId;
 
   // 현재 대여 중인지 확인
   const currentRental = findCurrentRental(data.deviceId);
@@ -162,7 +161,13 @@ function findCurrentRental(deviceId) {
 
   // 아래서부터 위로 검색 (최신 기록부터)
   for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][1] === deviceId && data[i][6] === '') {
+    const rowDeviceId = String(data[i][1]).trim();
+    const returnDate = data[i][6];
+
+    // 반납일시가 비어있는지 확인 (빈 문자열, null, undefined 모두 체크)
+    const isNotReturned = !returnDate || String(returnDate).trim() === '';
+
+    if (rowDeviceId === String(deviceId).trim() && isNotReturned) {
       // 디바이스ID가 일치하고 반납일시가 비어있으면 대여 중
       return {
         isRented: true,
