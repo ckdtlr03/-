@@ -53,6 +53,13 @@ body {
     margin-bottom: 12px;
 }
 
+/* 헤더 버튼 그룹 */
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
 /* 메뉴 버튼 */
 .menu-btn {
     padding: 8px 20px;
@@ -144,26 +151,6 @@ body {
 .return-btn:hover {
     box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
-}
-
-.history-btn {
-    background: linear-gradient(135deg, #8E44AD, #6C3483);
-    color: white;
-    padding: 25px 20px;
-}
-
-.history-btn:hover {
-    box-shadow: var(--shadow-lg);
-    transform: translateY(-2px);
-}
-
-.history-btn .btn-icon {
-    font-size: 36px;
-    margin-bottom: 10px;
-}
-
-.history-btn .btn-text {
-    font-size: 22px;
 }
 
 .btn-icon {
