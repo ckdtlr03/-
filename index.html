@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>디바이스 대여/반납 시스템</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <!-- QR 스캐너 라이브러리 -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <!-- QR 코드 생성 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+        <!-- 사이드바 오버레이 -->
+        <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+        <!-- 사이드바 -->
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <button id="sidebarClose" class="sidebar-close">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="4" y1="4" x2="16" y2="16"/>
+                        <line x1="16" y1="4" x2="4" y2="16"/>
+                    </svg>
+                </button>
+            </div>
+            <ul class="sidebar-menu">
+                <li><button id="menuBtn" class="sidebar-item">QR 생성</button></li>
+                <li><button id="historyBtn" class="sidebar-item">현황</button></li>
+            </ul>
+        </nav>
+
+        <!-- 헤더 -->
+        <header class="header">
+            <button id="hamburgerBtn" class="hamburger-btn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </header>
+    <div class="container">
+
+        <!-- 메인 화면 -->
+        <div id="mainScreen" class="screen active">
+            <h1 class="main-title">디바이스 대여/반납</h1>
+            <div class="main-nav">
+                <button id="menuBtnNav" class="main-nav-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+                    QR 생성
+                </button>
+                <span class="main-nav-divider"></span>
+                <button id="historyBtnNav" class="main-nav-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    현황
+                </button>
+            </div>
+            <div class="button-group">
+                <button id="rentBtn" class="main-btn rent-btn">
+                    <div class="btn-content">
+                        <div class="btn-info">
+                            <span class="btn-text">대여</span>
+                            <span class="btn-sub">Device Checkout</span>
+                        </div>
+                        <div class="btn-icon">
+                            <svg width="160" height="160" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M26 74 L70 30 L70 62 M70 30 L38 30" stroke="rgba(190,240,120,0.7)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            </svg>
+                        </div>
+                    </div>
+                </button>
+                <button id="returnBtn" class="main-btn return-btn">
+                    <div class="btn-content">
+                        <div class="btn-info">
+                            <span class="btn-text">반납</span>
+                            <span class="btn-sub">Device Return</span>
+                        </div>
+                        <div class="btn-icon">
+                            <svg width="160" height="160" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M74 26 C74 26 30 26 30 56 C30 76 50 82 68 72 L50 65 M68 72 L58 88" stroke="rgba(130,200,255,0.7)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                            </svg>
+                        </div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 대여 정보 입력 화면 -->
+        <div id="rentInfoScreen" class="screen">
+            <div class="form-container">
+                <h2>대여 정보 입력</h2>
+
+                <div class="form-group">
+                    <label>셀 선택</label>
+                    <div class="cell-selector">
+                        <label class="cell-option">
+                            <input type="radio" name="cell" value="1셀" checked>
+                            <span class="cell-label">1셀</span>
+                        </label>
+                        <label class="cell-option">
+                            <input type="radio" name="cell" value="2셀">
+                            <span class="cell-label">2셀</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="renterName">이름</label>
+                    <input type="text" id="renterName" placeholder="이름을 입력하세요" autocomplete="off">
+                </div>
+
+                <div class="button-row">
+                    <button id="backToMainFromRent" class="secondary-btn">뒤로</button>
+                    <button id="goToScanFromRent" class="primary-btn">QR 스캔</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR 스캔 화면 -->
+        <div id="scanScreen" class="screen">
+            <div class="scan-container">
+                <h2 id="scanTitle">QR 코드 스캔</h2>
+                <p id="scanInstruction" class="scan-instruction">디바이스의 QR 코드를 스캔하세요</p>
+
+                <div id="qrReader"></div>
+
+                <div id="scanInfo" class="scan-info">
+                    <!-- 스캔 모드에 따라 정보 표시 -->
+                </div>
+
+                <button id="backFromScan" class="secondary-btn">취소</button>
+            </div>
+        </div>
+
+        <!-- 결과 화면 -->
+        <div id="resultScreen" class="screen">
+            <div class="result-container">
+                <div id="resultIcon" class="result-icon">✅</div>
+                <h2 id="resultTitle">처리 완료</h2>
+                <p id="resultMessage" class="result-message"></p>
+
+                <div id="resultDetails" class="result-details">
+                    <!-- 상세 정보 표시 -->
+                </div>
+
+                <button id="backToMain" class="primary-btn">확인</button>
+            </div>
+        </div>
+
+        <!-- QR 생성 화면 -->
+        <div id="qrGeneratorScreen" class="screen">
+            <div class="form-container">
+                <h2>QR 코드 생성</h2>
+
+                <!-- 탭 선택 -->
+                <div class="tab-selector">
+                    <button id="tabSingle" class="tab-btn active">단일 생성</button>
+                    <button id="tabBatch" class="tab-btn">일괄 생성</button>
+                </div>
+
+                <!-- 단일 생성 -->
+                <div id="singleGenSection" class="gen-section active">
+                    <div class="form-group">
+                        <label for="genDeviceId">디바이스 ID</label>
+                        <input type="text" id="genDeviceId" placeholder="예: DEV001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="genDeviceName">디바이스 이름 (선택)</label>
+                        <input type="text" id="genDeviceName" placeholder="예: iPhone 15 Pro">
+                    </div>
+
+                    <div class="button-row">
+                        <button id="backFromGenerator" class="secondary-btn">뒤로</button>
+                        <button id="generateQrBtn" class="primary-btn">생성</button>
+                    </div>
+
+                    <div id="qrResultArea" class="qr-result-area">
+                        <div id="qrCodeDisplay"></div>
+                        <div class="qr-result-info">
+                            <p><strong>ID:</strong> <span id="qrResultId"></span></p>
+                            <p><strong>이름:</strong> <span id="qrResultName"></span></p>
+                        </div>
+                        <button id="downloadQrBtn" class="primary-btn">다운로드</button>
+                    </div>
+                </div>
+
+                <!-- 일괄 생성 -->
+                <div id="batchGenSection" class="gen-section">
+                    <div class="form-group">
+                        <label for="batchInput">디바이스 목록 (한 줄에 하나씩)</label>
+                        <textarea id="batchInput" class="batch-textarea" placeholder="DEV001,iPhone 15 Pro
+DEV002,Galaxy S24
+DEV003,iPad Pro 12.9"></textarea>
+                        <p class="help-text">형식: 디바이스ID,디바이스이름 (쉼표로 구분)</p>
+                    </div>
+
+                    <div class="button-row">
+                        <button id="backFromBatch" class="secondary-btn">뒤로</button>
+                        <button id="generateBatchBtn" class="primary-btn">일괄 생성</button>
+                    </div>
+
+                    <div id="batchResultArea" class="batch-results"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 현황 모달 -->
+        <div id="statusModal" class="modal-overlay">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h2>디바이스 현황</h2>
+                    <button id="closeStatusModal" class="modal-close">
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="4" y1="4" x2="16" y2="16"/>
+                            <line x1="16" y1="4" x2="4" y2="16"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="statusContent" class="modal-body">
+                    <div class="status-loading">불러오는 중...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 디바이스 액션 모달 -->
+        <div id="deviceActionModal" class="modal-overlay">
+            <div class="modal-container modal-small">
+                <div class="modal-header">
+                    <h2 id="deviceActionTitle">디바이스</h2>
+                    <button id="closeDeviceActionModal" class="modal-close">
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="4" y1="4" x2="16" y2="16"/>
+                            <line x1="16" y1="4" x2="4" y2="16"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="deviceActionInfo" class="device-action-info"></div>
+                    <div id="deviceActionButtons" class="device-action-buttons"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 대여 정보 입력 모달 (현황에서 대여 시) -->
+        <div id="rentFromStatusModal" class="modal-overlay">
+            <div class="modal-container modal-small">
+                <div class="modal-header">
+                    <h2>대여 정보 입력</h2>
+                    <button id="closeRentFromStatusModal" class="modal-close">
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="4" y1="4" x2="16" y2="16"/>
+                            <line x1="16" y1="4" x2="4" y2="16"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>셀 선택</label>
+                        <div class="cell-selector">
+                            <label class="cell-option">
+                                <input type="radio" name="modalCell" value="1셀" checked>
+                                <span class="cell-label">1셀</span>
+                            </label>
+                            <label class="cell-option">
+                                <input type="radio" name="modalCell" value="2셀">
+                                <span class="cell-label">2셀</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="modalRenterName">이름</label>
+                        <input type="text" id="modalRenterName" placeholder="이름을 입력하세요" autocomplete="off">
+                    </div>
+                    <div class="button-row" style="margin-top:24px;">
+                        <button id="cancelRentFromStatus" class="secondary-btn">취소</button>
+                        <button id="confirmRentFromStatus" class="primary-btn" style="background:#fff;color:#111;border-color:#fff;">대여 확인</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 관리자 비밀번호 모달 -->
+        <div id="adminPasswordModal" class="modal-overlay">
+            <div class="modal-container modal-small">
+                <div class="modal-header">
+                    <h2>관리자 인증</h2>
+                    <button id="closeAdminPasswordModal" class="modal-close">
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="4" y1="4" x2="16" y2="16"/>
+                            <line x1="16" y1="4" x2="4" y2="16"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p class="admin-desc">QR 코드 생성은 관리자만 사용할 수 있습니다.</p>
+                    <div class="form-group">
+                        <label for="adminPassword">비밀번호</label>
+                        <input type="password" id="adminPassword" placeholder="비밀번호를 입력하세요" autocomplete="off">
+                    </div>
+                    <p id="adminPasswordError" class="admin-error"></p>
+                    <div class="button-row" style="margin-top:24px;">
+                        <button id="cancelAdminPassword" class="secondary-btn">취소</button>
+                        <button id="confirmAdminPassword" class="primary-btn" style="background:#fff;color:#111;border-color:#fff;">확인</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 로딩 오버레이 -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>처리 중...</p>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
