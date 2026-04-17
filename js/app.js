@@ -11,7 +11,6 @@ window.addEventListener('resize', setVH);
 
 class DeviceRentalApp {
     constructor() {
-        this._adminAuthenticated = false;
         this._rentStatusDevice = null;
         this._selectionMode = false;
         this._selectedIds = new Set();
@@ -121,18 +120,6 @@ class DeviceRentalApp {
         document.getElementById('bulkRentBtn').addEventListener('click', () => this.openBulkRent());
         document.getElementById('bulkReturnBtn').addEventListener('click', () => this.processBulkReturn());
 
-        // QR 생성
-        document.getElementById('backFromGenerator').addEventListener('click', () => this.showScreen('mainScreen'));
-        document.getElementById('backFromBatch').addEventListener('click', () => this.showScreen('mainScreen'));
-        document.getElementById('generateQrBtn').addEventListener('click', () => this.generateQrCode());
-        document.getElementById('downloadQrBtn').addEventListener('click', () => this.downloadGeneratedQr());
-        document.getElementById('generateBatchBtn').addEventListener('click', () => this.generateBatchQrCodes());
-        document.getElementById('tabSingle').addEventListener('click', () => this.switchTab('single'));
-        document.getElementById('tabBatch').addEventListener('click', () => this.switchTab('batch'));
-        document.getElementById('genDeviceId').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.generateQrCode();
-        });
-
         // 디바이스 액션 모달
         document.getElementById('closeDeviceActionModal').addEventListener('click', () => {
             document.getElementById('deviceActionModal').classList.remove('active');
@@ -159,23 +146,6 @@ class DeviceRentalApp {
         });
         document.getElementById('modalRenterName').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.confirmRentFromStatus();
-        });
-
-        // 관리자 비밀번호 모달
-        document.getElementById('closeAdminPasswordModal').addEventListener('click', () => {
-            document.getElementById('adminPasswordModal').classList.remove('active');
-        });
-        document.getElementById('adminPasswordModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
-        });
-        document.getElementById('cancelAdminPassword').addEventListener('click', () => {
-            document.getElementById('adminPasswordModal').classList.remove('active');
-        });
-        document.getElementById('confirmAdminPassword').addEventListener('click', () => {
-            this.verifyAdminPassword();
-        });
-        document.getElementById('adminPassword').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.verifyAdminPassword();
         });
     }
 
@@ -573,6 +543,7 @@ class DeviceRentalApp {
         const info = document.getElementById('deviceActionInfo');
         const buttons = document.getElementById('deviceActionButtons');
         const isRented = device.status === 'rented';
+        const esc = (s) => this._escapeHtml(s);
 
         title.textContent = device.deviceName || device.deviceId;
 
@@ -581,7 +552,7 @@ class DeviceRentalApp {
             infoHtml += `
             <div class="detail-row">
                 <span class="detail-label">카테고리</span>
-                <span class="detail-value">${device.category}</span>
+                <span class="detail-value">${esc(device.category)}</span>
             </div>`;
         }
         infoHtml += `
@@ -595,15 +566,15 @@ class DeviceRentalApp {
             infoHtml += `
                 <div class="detail-row">
                     <span class="detail-label">대여자</span>
-                    <span class="detail-value">${device.renter}</span>
+                    <span class="detail-value">${esc(device.renter || '')}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">셀</span>
-                    <span class="detail-value">${device.cell || '-'}</span>
+                    <span class="detail-value">${esc(device.cell || '-')}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">대여일시</span>
-                    <span class="detail-value">${this.formatDate(device.rentDate)}</span>
+                    <span class="detail-value">${esc(this.formatDate(device.rentDate))}</span>
                 </div>
             `;
         }
@@ -626,6 +597,10 @@ class DeviceRentalApp {
 
     openRentFromStatus(device) {
         this._rentStatusDevice = device;
+        this._bulkRentMode = false;
+        this._bulkRentDevices = [];
+        const title = document.querySelector('#rentFromStatusModal .modal-header h2');
+        if (title) title.textContent = '대여 정보 입력';
         document.getElementById('deviceActionModal').classList.remove('active');
         document.getElementById('modalRenterName').value = '';
         document.querySelector('input[name="modalCell"][value="1셀"]').checked = true;
@@ -747,173 +722,6 @@ class DeviceRentalApp {
         const overlay = document.getElementById('loadingOverlay');
         if (show) overlay.classList.add('active');
         else overlay.classList.remove('active');
-    }
-
-    /**
-     * QR 생성 (관리자)
-     */
-    openQrGenerator() {
-        if (this._adminAuthenticated) {
-            this._openQrGeneratorScreen();
-            return;
-        }
-        const modal = document.getElementById('adminPasswordModal');
-        document.getElementById('adminPassword').value = '';
-        document.getElementById('adminPasswordError').textContent = '';
-        modal.classList.add('active');
-        document.getElementById('adminPassword').focus();
-    }
-
-    verifyAdminPassword() {
-        const input = document.getElementById('adminPassword').value;
-        if (input === CONFIG.ADMIN_PASSWORD) {
-            this._adminAuthenticated = true;
-            document.getElementById('adminPasswordModal').classList.remove('active');
-            this._openQrGeneratorScreen();
-        } else {
-            document.getElementById('adminPasswordError').textContent = '비밀번호가 올바르지 않습니다.';
-            document.getElementById('adminPassword').value = '';
-            document.getElementById('adminPassword').focus();
-        }
-    }
-
-    _openQrGeneratorScreen() {
-        document.getElementById('genDeviceId').value = '';
-        document.getElementById('genDeviceName').value = '';
-        document.getElementById('qrResultArea').classList.remove('active');
-        document.getElementById('qrCodeDisplay').innerHTML = '';
-        this.showScreen('qrGeneratorScreen');
-        document.getElementById('genDeviceId').focus();
-    }
-
-    generateQrCode() {
-        const deviceId = document.getElementById('genDeviceId').value.trim();
-        const deviceName = document.getElementById('genDeviceName').value.trim() || deviceId;
-
-        if (!deviceId) {
-            alert('디바이스 ID를 입력해주세요.');
-            document.getElementById('genDeviceId').focus();
-            return;
-        }
-
-        const qrContainer = document.getElementById('qrCodeDisplay');
-        qrContainer.innerHTML = '';
-
-        const qrContent = encodeURIComponent(`${deviceId}|${deviceName}`);
-
-        new QRCode(qrContainer, {
-            text: qrContent,
-            width: 200,
-            height: 200,
-            colorDark: '#2c3e50',
-            colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.H
-        });
-
-        document.getElementById('qrResultId').textContent = deviceId;
-        document.getElementById('qrResultName').textContent = deviceName;
-        document.getElementById('qrResultArea').classList.add('active');
-    }
-
-    downloadGeneratedQr() {
-        const qrContainer = document.getElementById('qrCodeDisplay');
-        const img = qrContainer.querySelector('img');
-        const canvas = qrContainer.querySelector('canvas');
-        const deviceId = document.getElementById('qrResultId').textContent;
-
-        const link = document.createElement('a');
-        link.download = `QR_${deviceId}.png`;
-
-        if (canvas) link.href = canvas.toDataURL('image/png');
-        else if (img) link.href = img.src;
-
-        link.click();
-    }
-
-    switchTab(tab) {
-        document.getElementById('tabSingle').classList.remove('active');
-        document.getElementById('tabBatch').classList.remove('active');
-        document.getElementById('singleGenSection').classList.remove('active');
-        document.getElementById('batchGenSection').classList.remove('active');
-
-        if (tab === 'single') {
-            document.getElementById('tabSingle').classList.add('active');
-            document.getElementById('singleGenSection').classList.add('active');
-        } else {
-            document.getElementById('tabBatch').classList.add('active');
-            document.getElementById('batchGenSection').classList.add('active');
-        }
-    }
-
-    generateBatchQrCodes() {
-        const input = document.getElementById('batchInput').value.trim();
-
-        if (!input) {
-            alert('디바이스 목록을 입력해주세요.');
-            return;
-        }
-
-        const lines = input.split(/\r?\n/).filter(line => line.trim());
-        const resultsContainer = document.getElementById('batchResultArea');
-        resultsContainer.innerHTML = '';
-
-        lines.forEach((line, index) => {
-            const parts = line.split(',').map(p => p.trim());
-            const deviceId = (parts[0] || '').trim();
-            const deviceName = (parts[1] || deviceId).trim();
-
-            if (!deviceId) return;
-
-            const card = document.createElement('div');
-            card.className = 'qr-card';
-
-            const qrWrapper = document.createElement('div');
-            qrWrapper.className = 'qr-wrapper';
-            qrWrapper.id = `qrBatch_${index}`;
-
-            const idText = document.createElement('div');
-            idText.className = 'device-id';
-            idText.textContent = deviceId;
-
-            const nameText = document.createElement('div');
-            nameText.className = 'device-name';
-            nameText.textContent = deviceName;
-
-            const downloadBtn = document.createElement('button');
-            downloadBtn.className = 'download-btn';
-            downloadBtn.textContent = '다운로드';
-            downloadBtn.onclick = () => this.downloadBatchQr(qrWrapper, deviceId);
-
-            card.appendChild(qrWrapper);
-            card.appendChild(idText);
-            card.appendChild(nameText);
-            card.appendChild(downloadBtn);
-
-            resultsContainer.appendChild(card);
-
-            const qrContent = encodeURIComponent(`${deviceId}|${deviceName}`);
-            new QRCode(qrWrapper, {
-                text: qrContent,
-                width: 120,
-                height: 120,
-                colorDark: '#2c3e50',
-                colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.H
-            });
-        });
-    }
-
-    downloadBatchQr(qrWrapper, deviceId) {
-        const img = qrWrapper.querySelector('img');
-        const canvas = qrWrapper.querySelector('canvas');
-
-        const link = document.createElement('a');
-        link.download = `QR_${deviceId}.png`;
-
-        if (canvas) link.href = canvas.toDataURL('image/png');
-        else if (img) link.href = img.src;
-
-        link.click();
     }
 }
 

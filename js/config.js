@@ -8,27 +8,8 @@ const CONFIG = {
     // 예: 'https://script.google.com/macros/s/AKfycb.../exec'
     API_URL: 'https://script.google.com/macros/s/AKfycbx1Z5jsVzmnbAKz0FQIlucxQ48cW84M554fhdaxJe20MO_FIlh5_RUbwJOvDmlNpzdT/exec',
 
-    // Google 스프레드시트 URL (대여 이력 버튼 클릭 시 열림)
-    SPREADSHEET_URL: 'https://docs.google.com/spreadsheets/d/1k6DktYgAj8QYTMlg5zReOiUiPNkfuxdeRuTqRUc4lMA/edit?usp=sharing',
-
-    // QR 스캐너 설정
-    QR_SCANNER: {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-    },
-
-    // 관리자 비밀번호 (QR 생성 접근용)
-    ADMIN_PASSWORD: '1234',
-
     // 메시지
     MESSAGES: {
-        RENT_SUCCESS: '대여가 완료되었습니다!',
-        RETURN_SUCCESS: '반납이 완료되었습니다!',
-        ERROR_NO_NAME: '이름을 입력해주세요.',
-        ERROR_API: 'API 연결에 실패했습니다. 설정을 확인해주세요.',
-        ERROR_CAMERA: '카메라 접근에 실패했습니다. 권한을 확인해주세요.',
-        ERROR_ALREADY_RENTED: '이 디바이스는 이미 대여 중입니다.',
-        ERROR_NOT_RENTED: '이 디바이스는 현재 대여 중이 아닙니다.'
+        ERROR_NO_NAME: '이름을 입력해주세요.'
     }
 };
