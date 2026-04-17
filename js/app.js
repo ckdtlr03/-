@@ -2,7 +2,6 @@
  * 디바이스 대여/반납 시스템 - 메인 애플리케이션
  */
 
-// 모바일 브라우저 뷰포트 높이 보정
 function setVH() {
     const vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -12,39 +11,29 @@ window.addEventListener('resize', setVH);
 
 class DeviceRentalApp {
     constructor() {
-        this.currentMode = null; // 'rent' 또는 'return'
-        this.qrScanner = null;
-        this.rentInfo = {
-            cell: '1셀',
-            renterName: ''
-        };
-
+        this._adminAuthenticated = false;
+        this._rentStatusDevice = null;
+        this._selectionMode = false;
+        this._selectedIds = new Set();
+        this._searchQuery = '';
+        this._bulkRentMode = false;
+        this._bulkRentDevices = [];
         this.init();
     }
 
-    /**
-     * 초기화
-     */
     init() {
         this.bindEvents();
         this.checkApiConfig();
     }
 
-    /**
-     * API 설정 확인
-     */
     checkApiConfig() {
         if (CONFIG.API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-            console.warn('⚠️ Google Apps Script URL이 설정되지 않았습니다. config.js 파일을 확인해주세요.');
+            console.warn('⚠️ Google Apps Script URL이 설정되지 않았습니다.');
         }
     }
 
-    /**
-     * 날짜 형식 변환
-     */
     formatDate(dateString) {
         if (!dateString) return '-';
-
         try {
             const date = new Date(dateString);
             if (isNaN(date.getTime())) return dateString;
@@ -62,14 +51,7 @@ class DeviceRentalApp {
         }
     }
 
-    /**
-     * 이벤트 바인딩
-     */
     bindEvents() {
-        // 메인 화면 버튼
-        document.getElementById('rentBtn').addEventListener('click', () => this.startRent());
-        document.getElementById('returnBtn').addEventListener('click', () => this.startReturn());
-
         // 햄버거 메뉴
         const hamburgerBtn = document.getElementById('hamburgerBtn');
         const sidebar = document.getElementById('sidebar');
@@ -94,61 +76,64 @@ class DeviceRentalApp {
         sidebarClose.addEventListener('click', closeSidebar);
         sidebarOverlay.addEventListener('click', closeSidebar);
 
-        // 사이드바 내 메뉴 항목
-        document.getElementById('menuBtn').addEventListener('click', () => { closeSidebar(); this.openQrGenerator(); });
-        document.getElementById('historyBtn').addEventListener('click', () => { closeSidebar(); this.openHistory(); });
-        document.getElementById('menuBtnNav').addEventListener('click', () => { closeSidebar(); this.openQrGenerator(); });
-        document.getElementById('historyBtnNav').addEventListener('click', () => { closeSidebar(); this.openHistory(); });
-
-        // 대여 정보 화면 버튼
-        document.getElementById('backToMainFromRent').addEventListener('click', () => this.showScreen('mainScreen'));
-        document.getElementById('goToScanFromRent').addEventListener('click', () => this.goToRentScan());
-
-        // 셀 선택
-        document.querySelectorAll('input[name="cell"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                this.rentInfo.cell = e.target.value;
-            });
+        // 사이드바 메뉴: 디바이스 관리 → 홈
+        document.getElementById('homeMenuBtn').addEventListener('click', () => {
+            closeSidebar();
+            if (this._selectionMode) this.exitSelectionMode();
+            this.showScreen('homeScreen');
         });
 
-        // 스캔 화면 버튼
-        document.getElementById('backFromScan').addEventListener('click', () => this.cancelScan());
-
-        // 결과 화면 버튼
-        document.getElementById('backToMain').addEventListener('click', () => this.showScreen('mainScreen'));
-
-        // 이름 입력 엔터 키
-        document.getElementById('renterName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.goToRentScan();
-            }
+        // 홈 → 대여 및 반납
+        document.getElementById('enterRentalBtn').addEventListener('click', () => {
+            this.showScreen('mainScreen');
+            this.loadDevices();
         });
 
-        // QR 생성 관련 버튼
+        // 디바이스 현황 → 홈
+        document.getElementById('backToHomeBtn').addEventListener('click', () => {
+            if (this._selectionMode) this.exitSelectionMode();
+            this.showScreen('homeScreen');
+        });
+
+        // 메인 새로고침
+        document.getElementById('refreshMainBtn').addEventListener('click', () => this.loadDevices(true));
+
+        // 다중 선택 토글
+        document.getElementById('selectModeBtn').addEventListener('click', () => this.toggleSelectionMode());
+
+        // 검색
+        const searchInput = document.getElementById('searchInput');
+        const searchBar = searchInput.closest('.search-bar');
+        searchInput.addEventListener('input', () => {
+            this._searchQuery = searchInput.value;
+            searchBar.classList.toggle('has-value', !!this._searchQuery);
+            if (this._allDevices) this._rerender();
+        });
+        document.getElementById('searchClearBtn').addEventListener('click', () => {
+            searchInput.value = '';
+            this._searchQuery = '';
+            searchBar.classList.remove('has-value');
+            if (this._allDevices) this._rerender();
+            searchInput.focus();
+        });
+
+        // 다중 대여/반납
+        document.getElementById('bulkRentBtn').addEventListener('click', () => this.openBulkRent());
+        document.getElementById('bulkReturnBtn').addEventListener('click', () => this.processBulkReturn());
+
+        // QR 생성
         document.getElementById('backFromGenerator').addEventListener('click', () => this.showScreen('mainScreen'));
         document.getElementById('backFromBatch').addEventListener('click', () => this.showScreen('mainScreen'));
         document.getElementById('generateQrBtn').addEventListener('click', () => this.generateQrCode());
         document.getElementById('downloadQrBtn').addEventListener('click', () => this.downloadGeneratedQr());
         document.getElementById('generateBatchBtn').addEventListener('click', () => this.generateBatchQrCodes());
-
-        // 탭 전환
         document.getElementById('tabSingle').addEventListener('click', () => this.switchTab('single'));
         document.getElementById('tabBatch').addEventListener('click', () => this.switchTab('batch'));
-
-        // QR 생성 입력 엔터 키
         document.getElementById('genDeviceId').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.generateQrCode();
         });
 
-        // 현황 모달 닫기
-        document.getElementById('closeStatusModal').addEventListener('click', () => {
-            document.getElementById('statusModal').classList.remove('active');
-        });
-        document.getElementById('statusModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
-        });
-
-        // 디바이스 액션 모달 닫기
+        // 디바이스 액션 모달
         document.getElementById('closeDeviceActionModal').addEventListener('click', () => {
             document.getElementById('deviceActionModal').classList.remove('active');
         });
@@ -156,16 +141,19 @@ class DeviceRentalApp {
             if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
         });
 
-        // 대여 정보 입력 모달 (현황에서)
-        document.getElementById('closeRentFromStatusModal').addEventListener('click', () => {
+        // 대여 정보 입력 모달
+        const closeRentModal = () => {
             document.getElementById('rentFromStatusModal').classList.remove('active');
-        });
+            this._bulkRentMode = false;
+            this._bulkRentDevices = [];
+            const title = document.querySelector('#rentFromStatusModal .modal-header h2');
+            if (title) title.textContent = '대여 정보 입력';
+        };
+        document.getElementById('closeRentFromStatusModal').addEventListener('click', closeRentModal);
         document.getElementById('rentFromStatusModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+            if (e.target === e.currentTarget) closeRentModal();
         });
-        document.getElementById('cancelRentFromStatus').addEventListener('click', () => {
-            document.getElementById('rentFromStatusModal').classList.remove('active');
-        });
+        document.getElementById('cancelRentFromStatus').addEventListener('click', closeRentModal);
         document.getElementById('confirmRentFromStatus').addEventListener('click', () => {
             this.confirmRentFromStatus();
         });
@@ -191,9 +179,6 @@ class DeviceRentalApp {
         });
     }
 
-    /**
-     * 화면 전환
-     */
     showScreen(screenId) {
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
@@ -202,94 +187,386 @@ class DeviceRentalApp {
     }
 
     /**
-     * 대여 시작
+     * 디바이스 목록 로드 및 메인 화면 렌더링
      */
-    startRent() {
-        this.currentMode = 'rent';
-        this.rentInfo = { cell: '1셀', renterName: '' };
-        document.getElementById('renterName').value = '';
-        document.querySelector('input[name="cell"][value="1셀"]').checked = true;
-        this.showScreen('rentInfoScreen');
-        document.getElementById('renterName').focus();
-    }
+    async loadDevices(animate = false) {
+        const container = document.getElementById('mainDeviceList');
+        const refreshBtn = document.getElementById('refreshMainBtn');
 
-    /**
-     * 반납 시작
-     */
-    startReturn() {
-        this.currentMode = 'return';
-        document.getElementById('scanTitle').textContent = '반납 - QR 스캔';
-        document.getElementById('scanInstruction').textContent = '반납할 디바이스의 QR 코드를 스캔하세요';
-        document.getElementById('scanInfo').innerHTML = '';
-        this.showScreen('scanScreen');
-        this.startQrScanner();
-    }
+        if (animate) {
+            refreshBtn.classList.add('rotating');
+            setTimeout(() => refreshBtn.classList.remove('rotating'), 600);
+        }
 
-    /**
-     * 현황 모달 열기
-     */
-    async openHistory() {
-        const modal = document.getElementById('statusModal');
-        const content = document.getElementById('statusContent');
-        modal.classList.add('active');
-        content.innerHTML = '<div class="status-loading">불러오는 중...</div>';
+        if (!container.querySelector('.device-row')) {
+            container.innerHTML = '<div class="status-loading">불러오는 중...</div>';
+        }
 
         try {
             const response = await this.callApi({ action: 'getStatus' });
-
             if (response && response.success && response.devices) {
                 this.renderDeviceList(response.devices);
             } else {
-                content.innerHTML = '<div class="status-empty">데이터를 불러올 수 없습니다.</div>';
+                container.innerHTML = '<div class="status-empty">데이터를 불러올 수 없습니다.</div>';
             }
         } catch (error) {
             console.error('현황 조회 오류:', error);
-            content.innerHTML = '<div class="status-empty">서버 연결에 실패했습니다.</div>';
+            container.innerHTML = '<div class="status-empty">서버 연결에 실패했습니다.</div>';
         }
     }
 
-    /**
-     * 디바이스 리스트 렌더링
-     */
+    _escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    }
+
     renderDeviceList(devices) {
-        const content = document.getElementById('statusContent');
+        const container = document.getElementById('mainDeviceList');
 
         if (!devices || devices.length === 0) {
-            content.innerHTML = '<div class="status-empty">등록된 디바이스가 없습니다.</div>';
+            container.innerHTML = '<div class="status-empty">등록된 디바이스가 없습니다.</div>';
+            this._allDevices = [];
+            this.updateSelectionBar();
             return;
         }
 
-        let html = '<div class="device-list">';
-        devices.forEach((device, index) => {
-            const isRented = device.status === 'rented';
-            html += `
-                <div class="device-row" data-index="${index}">
-                    <div class="device-row-left">
-                        <span class="device-row-name">${device.deviceName || device.deviceId}</span>
-                        <span class="device-row-id">${device.deviceId}</span>
-                    </div>
-                    <div class="device-row-right">
-                        ${isRented ? `<span class="device-row-renter">${device.renter}</span>` : ''}
-                        <span class="status-badge ${isRented ? 'rented' : 'available'}">${isRented ? '대여 중' : '사용 가능'}</span>
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
-        content.innerHTML = html;
+        this._allDevices = devices;
 
-        // 각 디바이스 행 클릭 이벤트
-        content.querySelectorAll('.device-row').forEach(row => {
+        // 이전 선택이 존재하지 않는 디바이스를 가리키면 제거
+        const existingIds = new Set(devices.map(d => d.deviceId));
+        for (const id of [...this._selectedIds]) {
+            if (!existingIds.has(id)) this._selectedIds.delete(id);
+        }
+
+        this._rerender();
+    }
+
+    _rerender() {
+        const devices = this._allDevices || [];
+        const getCat = d => (d.category && d.category.trim()) || '기타';
+
+        const categoryOrder = [];
+        const seen = new Set();
+        devices.forEach(d => {
+            const c = getCat(d);
+            if (!seen.has(c)) { seen.add(c); categoryOrder.push(c); }
+        });
+
+        const rentedCount = devices.filter(d => d.status === 'rented').length;
+
+        const tabs = [];
+        if (rentedCount > 0) tabs.push({ key: 'rented', label: '대여 중', count: rentedCount });
+        categoryOrder.forEach(cat => {
+            const count = devices.filter(d => getCat(d) === cat).length;
+            tabs.push({ key: 'cat:' + cat, label: cat, count });
+        });
+
+        if (!this._selectedTab || !tabs.find(t => t.key === this._selectedTab)) {
+            this._selectedTab = tabs.length > 0 ? tabs[0].key : null;
+        }
+
+        this._renderTabsAndList(tabs);
+        this.updateSelectionBar();
+    }
+
+    _renderTabsAndList(tabs) {
+        const container = document.getElementById('mainDeviceList');
+        const devices = this._allDevices;
+        const selected = this._selectedTab;
+        const getCat = d => (d.category && d.category.trim()) || '기타';
+        const esc = (s) => this._escapeHtml(s);
+        const q = (this._searchQuery || '').trim().toLowerCase();
+        const isSearching = q.length > 0;
+
+        let filtered;
+        if (isSearching) {
+            filtered = devices.filter(d => {
+                const name = (d.deviceName || d.deviceId || '').toLowerCase();
+                return name.includes(q);
+            });
+        } else if (selected === 'rented') {
+            filtered = devices.filter(d => d.status === 'rented');
+        } else if (selected && selected.startsWith('cat:')) {
+            const cat = selected.substring(4);
+            filtered = devices.filter(d => getCat(d) === cat);
+        } else {
+            filtered = devices;
+        }
+
+        const rented = filtered.filter(d => d.status === 'rented');
+        const available = filtered.filter(d => d.status !== 'rented');
+
+        const rowHtml = (device) => {
+            const name = device.deviceName || device.deviceId;
+            const subtitle = device.category || '';
+            const showSub = subtitle && subtitle !== name;
+            const isSelected = this._selectionMode && this._selectedIds.has(device.deviceId);
+            const checkbox = this._selectionMode ? `
+                <div class="device-row-checkbox">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>` : '';
+            return `
+            <div class="device-row${this._selectionMode ? ' selectable' : ''}${isSelected ? ' selected' : ''}" data-device-id="${esc(device.deviceId)}">
+                ${checkbox}
+                <div class="device-row-left">
+                    <span class="device-row-name">${esc(name)}</span>
+                    ${showSub ? `<span class="device-row-id">${esc(subtitle)}</span>` : ''}
+                </div>
+                <div class="device-row-right">
+                    ${device.status === 'rented' ? `<span class="device-row-renter">${esc(device.renter || '')}</span>` : ''}
+                    <span class="status-badge ${device.status === 'rented' ? 'rented' : 'available'}">${device.status === 'rented' ? '대여 중' : '사용 가능'}</span>
+                </div>
+            </div>`;
+        };
+
+        const tabsHtml = isSearching ? '' : `
+            <div class="category-tabs">
+                ${tabs.map(t => `
+                    <button class="category-tab${t.key === selected ? ' active' : ''}" data-tab-key="${esc(t.key)}">
+                        <span>${esc(t.label)}</span><span class="tab-count">${t.count}</span>
+                    </button>
+                `).join('')}
+            </div>
+        `;
+
+        let listHtml = '';
+        if (filtered.length === 0) {
+            listHtml = `<div class="status-empty">${isSearching ? '검색 결과가 없습니다.' : '해당 탭에 디바이스가 없습니다.'}</div>`;
+        } else if (!isSearching && selected === 'rented') {
+            listHtml = `<div class="device-section">
+                <div class="device-section-header"><span>대여 중</span><span class="device-section-count">${rented.length}</span></div>
+                <div class="device-section-body">${rented.map(rowHtml).join('')}</div>
+            </div>`;
+        } else {
+            if (rented.length > 0) {
+                listHtml += `<div class="device-section">
+                    <div class="device-section-header"><span>대여 중</span><span class="device-section-count">${rented.length}</span></div>
+                    <div class="device-section-body">${rented.map(rowHtml).join('')}</div>
+                </div>`;
+            }
+            listHtml += `<div class="device-section">
+                <div class="device-section-header"><span>사용 가능</span><span class="device-section-count">${available.length}</span></div>
+                <div class="device-section-body">${available.length > 0 ? available.map(rowHtml).join('') : '<div class="status-empty">사용 가능한 디바이스가 없습니다.</div>'}</div>
+            </div>`;
+        }
+
+        container.innerHTML = tabsHtml + listHtml;
+
+        const tabsEl = container.querySelector('.category-tabs');
+        if (tabsEl) {
+            this._enableTabDragAndWheel(tabsEl);
+            tabsEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('.category-tab');
+                if (!btn || !tabsEl.contains(btn)) return;
+                if (tabsEl.dataset.dragged === '1') {
+                    tabsEl.dataset.dragged = '0';
+                    e.preventDefault();
+                    return;
+                }
+                this._selectedTab = btn.dataset.tabKey;
+                this._renderTabsAndList(tabs);
+            });
+        }
+
+        container.querySelectorAll('.device-row').forEach(row => {
             row.addEventListener('click', () => {
-                const idx = parseInt(row.dataset.index);
-                this.showDeviceAction(devices[idx]);
+                const deviceId = row.dataset.deviceId;
+                const device = this._allDevices.find(d => d.deviceId === deviceId);
+                if (!device) return;
+                if (this._selectionMode) {
+                    this.toggleDeviceSelection(deviceId);
+                } else {
+                    this.showDeviceAction(device);
+                }
             });
         });
     }
 
-    /**
-     * 디바이스 액션 모달 표시
-     */
+    _enableTabDragAndWheel(tabsEl) {
+        tabsEl.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0 && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
+                e.preventDefault();
+                tabsEl.scrollLeft += e.deltaY;
+            }
+        }, { passive: false });
+
+        let isDown = false;
+        let startX = 0;
+        let startScroll = 0;
+        let moved = 0;
+
+        const onMove = (e) => {
+            if (!isDown) return;
+            const dx = e.clientX - startX;
+            moved = Math.abs(dx);
+            if (moved > 3) {
+                tabsEl.scrollLeft = startScroll - dx;
+                e.preventDefault();
+            }
+        };
+
+        const onUp = () => {
+            if (!isDown) return;
+            isDown = false;
+            tabsEl.classList.remove('dragging');
+            if (moved > 5) tabsEl.dataset.dragged = '1';
+            window.removeEventListener('mousemove', onMove);
+            window.removeEventListener('mouseup', onUp);
+        };
+
+        tabsEl.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            isDown = true;
+            moved = 0;
+            startX = e.clientX;
+            startScroll = tabsEl.scrollLeft;
+            tabsEl.classList.add('dragging');
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+        });
+    }
+
+    toggleSelectionMode() {
+        this._selectionMode = !this._selectionMode;
+        this._selectedIds.clear();
+        document.getElementById('selectModeBtn').classList.toggle('active', this._selectionMode);
+        this._rerender();
+    }
+
+    exitSelectionMode() {
+        this._selectionMode = false;
+        this._selectedIds.clear();
+        document.getElementById('selectModeBtn').classList.remove('active');
+        this._rerender();
+    }
+
+    toggleDeviceSelection(deviceId) {
+        if (this._selectedIds.has(deviceId)) this._selectedIds.delete(deviceId);
+        else this._selectedIds.add(deviceId);
+        this._rerender();
+    }
+
+    updateSelectionBar() {
+        const bar = document.getElementById('selectionBar');
+        if (!this._selectionMode) {
+            bar.classList.remove('active');
+            return;
+        }
+        bar.classList.add('active');
+
+        const selectedDevices = [...this._selectedIds]
+            .map(id => (this._allDevices || []).find(d => d.deviceId === id))
+            .filter(Boolean);
+        const availableCount = selectedDevices.filter(d => d.status !== 'rented').length;
+        const rentedCount = selectedDevices.filter(d => d.status === 'rented').length;
+
+        document.getElementById('selectedCount').textContent = selectedDevices.length;
+        document.getElementById('bulkRentCount').textContent = availableCount;
+        document.getElementById('bulkReturnCount').textContent = rentedCount;
+        document.getElementById('bulkRentBtn').disabled = availableCount === 0;
+        document.getElementById('bulkReturnBtn').disabled = rentedCount === 0;
+    }
+
+    openBulkRent() {
+        const selected = [...this._selectedIds]
+            .map(id => this._allDevices.find(d => d.deviceId === id))
+            .filter(d => d && d.status !== 'rented');
+        if (selected.length === 0) {
+            alert('대여 가능한 디바이스가 선택되지 않았습니다.');
+            return;
+        }
+        this._bulkRentMode = true;
+        this._bulkRentDevices = selected;
+        const title = document.querySelector('#rentFromStatusModal .modal-header h2');
+        if (title) title.textContent = `${selected.length}개 디바이스 대여`;
+        document.getElementById('modalRenterName').value = '';
+        document.querySelector('input[name="modalCell"][value="1셀"]').checked = true;
+        document.getElementById('rentFromStatusModal').classList.add('active');
+        document.getElementById('modalRenterName').focus();
+    }
+
+    async confirmBulkRent() {
+        const name = document.getElementById('modalRenterName').value.trim();
+        if (!name) {
+            alert(CONFIG.MESSAGES.ERROR_NO_NAME);
+            document.getElementById('modalRenterName').focus();
+            return;
+        }
+        const cell = document.querySelector('input[name="modalCell"]:checked').value;
+        const devices = this._bulkRentDevices;
+
+        document.getElementById('rentFromStatusModal').classList.remove('active');
+        this.showLoading(true);
+
+        let success = 0, failed = 0;
+        const failedNames = [];
+        for (const device of devices) {
+            try {
+                const response = await this.callApi({
+                    action: 'rent',
+                    deviceId: device.deviceId,
+                    deviceName: device.deviceName,
+                    renterName: name,
+                    cell: cell
+                });
+                if (response && response.success) success++;
+                else { failed++; failedNames.push(device.deviceName || device.deviceId); }
+            } catch {
+                failed++; failedNames.push(device.deviceName || device.deviceId);
+            }
+        }
+
+        this.showLoading(false);
+        this._bulkRentMode = false;
+        this._bulkRentDevices = [];
+        const title = document.querySelector('#rentFromStatusModal .modal-header h2');
+        if (title) title.textContent = '대여 정보 입력';
+
+        if (failed === 0) alert(`${success}개 디바이스 대여 완료`);
+        else alert(`대여 ${success}건 성공, ${failed}건 실패\n실패: ${failedNames.join(', ')}`);
+
+        this.exitSelectionMode();
+        this.loadDevices();
+    }
+
+    async processBulkReturn() {
+        const selected = [...this._selectedIds]
+            .map(id => this._allDevices.find(d => d.deviceId === id))
+            .filter(d => d && d.status === 'rented');
+        if (selected.length === 0) {
+            alert('반납할 디바이스가 선택되지 않았습니다.');
+            return;
+        }
+        if (!confirm(`${selected.length}개 디바이스를 반납하시겠습니까?`)) return;
+
+        this.showLoading(true);
+
+        let success = 0, failed = 0;
+        const failedNames = [];
+        for (const device of selected) {
+            try {
+                const response = await this.callApi({
+                    action: 'return',
+                    deviceId: device.deviceId,
+                    deviceName: device.deviceName
+                });
+                if (response && response.success) success++;
+                else { failed++; failedNames.push(device.deviceName || device.deviceId); }
+            } catch {
+                failed++; failedNames.push(device.deviceName || device.deviceId);
+            }
+        }
+
+        this.showLoading(false);
+
+        if (failed === 0) alert(`${success}개 디바이스 반납 완료`);
+        else alert(`반납 ${success}건 성공, ${failed}건 실패\n실패: ${failedNames.join(', ')}`);
+
+        this.exitSelectionMode();
+        this.loadDevices();
+    }
+
     showDeviceAction(device) {
         const modal = document.getElementById('deviceActionModal');
         const title = document.getElementById('deviceActionTitle');
@@ -299,11 +576,15 @@ class DeviceRentalApp {
 
         title.textContent = device.deviceName || device.deviceId;
 
-        let infoHtml = `
+        let infoHtml = '';
+        if (device.category) {
+            infoHtml += `
             <div class="detail-row">
-                <span class="detail-label">디바이스 ID</span>
-                <span class="detail-value">${device.deviceId}</span>
-            </div>
+                <span class="detail-label">카테고리</span>
+                <span class="detail-value">${device.category}</span>
+            </div>`;
+        }
+        infoHtml += `
             <div class="detail-row">
                 <span class="detail-label">상태</span>
                 <span class="detail-value">${isRented ? '대여 중' : '사용 가능'}</span>
@@ -343,9 +624,6 @@ class DeviceRentalApp {
         modal.classList.add('active');
     }
 
-    /**
-     * 현황에서 대여 - 정보 입력 모달 열기
-     */
     openRentFromStatus(device) {
         this._rentStatusDevice = device;
         document.getElementById('deviceActionModal').classList.remove('active');
@@ -355,10 +633,8 @@ class DeviceRentalApp {
         document.getElementById('modalRenterName').focus();
     }
 
-    /**
-     * 현황에서 대여 확인
-     */
     async confirmRentFromStatus() {
+        if (this._bulkRentMode) return this.confirmBulkRent();
         const name = document.getElementById('modalRenterName').value.trim();
         if (!name) {
             alert(CONFIG.MESSAGES.ERROR_NO_NAME);
@@ -385,8 +661,7 @@ class DeviceRentalApp {
 
             if (response && response.success) {
                 alert(`${device.deviceName || device.deviceId} 대여가 완료되었습니다.`);
-                // 현황 새로고침
-                this.openHistory();
+                this.loadDevices();
             } else {
                 alert('대여 실패: ' + ((response && response.message) || '알 수 없는 오류'));
             }
@@ -396,9 +671,6 @@ class DeviceRentalApp {
         }
     }
 
-    /**
-     * 현황에서 반납 처리
-     */
     async processReturnFromStatus(device) {
         if (!confirm(`${device.deviceName || device.deviceId}을(를) 반납하시겠습니까?`)) {
             return;
@@ -418,8 +690,7 @@ class DeviceRentalApp {
 
             if (response && response.success) {
                 alert(`${device.deviceName || device.deviceId} 반납이 완료되었습니다.`);
-                // 현황 새로고침
-                this.openHistory();
+                this.loadDevices();
             } else {
                 alert('반납 실패: ' + ((response && response.message) || '알 수 없는 오류'));
             }
@@ -430,366 +701,62 @@ class DeviceRentalApp {
     }
 
     /**
-     * 대여 스캔 화면으로 이동
-     */
-    goToRentScan() {
-        const name = document.getElementById('renterName').value.trim();
-
-        if (!name) {
-            alert(CONFIG.MESSAGES.ERROR_NO_NAME);
-            document.getElementById('renterName').focus();
-            return;
-        }
-
-        this.rentInfo.renterName = name;
-
-        document.getElementById('scanTitle').textContent = '대여 - QR 스캔';
-        document.getElementById('scanInstruction').textContent = '대여할 디바이스의 QR 코드를 스캔하세요';
-        document.getElementById('scanInfo').innerHTML = `
-            <p><strong>대여자:</strong> ${this.rentInfo.renterName}</p>
-            <p><strong>셀:</strong> ${this.rentInfo.cell}</p>
-        `;
-
-        this.showScreen('scanScreen');
-        this.startQrScanner();
-    }
-
-    /**
-     * QR 스캐너 시작
-     */
-    async startQrScanner() {
-        try {
-            this.qrScanner = new Html5Qrcode('qrReader');
-
-            await this.qrScanner.start(
-                { facingMode: 'environment' },
-                CONFIG.QR_SCANNER,
-                (decodedText) => {
-                    // 콜백을 try-catch로 감싸고 async 처리
-                    try {
-                        this.onQrCodeScanned(decodedText).catch(err => {
-                            console.error('[DEBUG] async 오류:', err);
-                            alert('처리 오류: ' + (err.message || err));
-                        });
-                    } catch (callbackError) {
-                        console.error('[DEBUG] 콜백 오류:', callbackError);
-                        alert('스캔 콜백 오류: ' + (callbackError.message || callbackError));
-                    }
-                },
-                (errorMessage) => {
-                    // 스캔 중 에러는 무시 (스캔 실패시 계속 시도)
-                }
-            );
-        } catch (err) {
-            console.error('카메라 시작 실패:', err);
-            alert(CONFIG.MESSAGES.ERROR_CAMERA);
-            this.showScreen('mainScreen');
-        }
-    }
-
-    /**
-     * QR 스캐너 중지
-     */
-    async stopQrScanner() {
-        if (this.qrScanner && this.qrScanner.isScanning) {
-            try {
-                await this.qrScanner.stop();
-            } catch (err) {
-                console.error('스캐너 중지 실패:', err);
-            }
-        }
-    }
-
-    /**
-     * QR 코드 내용 파싱 (ID|이름 형식)
-     * URL 인코딩된 형식과 일반 형식 모두 지원
-     */
-    parseQrContent(qrContent) {
-        try {
-            // null/undefined 체크
-            if (!qrContent || typeof qrContent !== 'string') {
-                console.error('QR 내용이 비어있음:', qrContent);
-                return { deviceId: 'UNKNOWN', deviceName: 'UNKNOWN' };
-            }
-
-            let content = qrContent.trim();
-            console.log('원본 QR 내용:', content);
-
-            // URL 인코딩 여부 확인 (%로 시작하는 인코딩 패턴)
-            if (content.includes('%')) {
-                try {
-                    content = decodeURIComponent(content);
-                    console.log('URL 디코딩 완료:', content);
-                } catch (e) {
-                    console.log('URL 디코딩 실패, 원본 사용');
-                }
-            }
-
-            // 다양한 BOM 형태 제거
-            content = content
-                .replace(/^\uFEFF/, '')           // UTF-16 BOM
-                .replace(/^\xEF\xBB\xBF/, '')     // UTF-8 BOM (raw bytes)
-                .replace(/^ï»¿/, '')              // UTF-8 BOM as Latin-1
-                .replace(/^ï»/, '')               // 부분 BOM
-                .replace(/^�ｿ/, '')              // BOM 깨진 형태 1
-                .replace(/^�/, '')               // BOM 깨진 형태 2
-                .replace(/[\r\n\t\u0000-\u001F]/g, '')  // 제어문자 제거
-                .trim();
-
-            // 앞쪽의 깨진 문자들 제거 (첫 번째 영숫자나 한글이 나올 때까지)
-            content = content.replace(/^[^\w\uAC00-\uD7AF]+/, '');
-
-            console.log('정제된 QR 내용:', content);
-
-            if (content.includes('|')) {
-                const parts = content.split('|');
-                const deviceId = (parts[0] || '').trim();
-                const deviceName = (parts[1] || parts[0] || '').trim();
-                return {
-                    deviceId: deviceId || 'UNKNOWN',
-                    deviceName: deviceName || 'UNKNOWN'
-                };
-            }
-            // 기존 QR 코드 호환 (ID만 있는 경우)
-            return {
-                deviceId: content,
-                deviceName: content
-            };
-        } catch (error) {
-            console.error('QR 파싱 오류:', error);
-            return { deviceId: 'UNKNOWN', deviceName: 'UNKNOWN' };
-        }
-    }
-
-    /**
-     * QR 코드 스캔 완료
-     */
-    async onQrCodeScanned(qrContent) {
-        // 디버깅 모드: 각 단계마다 alert 표시
-        const DEBUG_ALERT = false;
-
-        try {
-            if (DEBUG_ALERT) alert('1. QR 인식됨: ' + qrContent);
-
-            await this.stopQrScanner();
-            if (DEBUG_ALERT) alert('2. 스캐너 중지 완료');
-
-            const deviceInfo = this.parseQrContent(qrContent);
-            if (DEBUG_ALERT) alert('3. 파싱 완료: ID=' + deviceInfo.deviceId + ', 이름=' + deviceInfo.deviceName);
-
-            if (this.currentMode === 'rent') {
-                if (DEBUG_ALERT) alert('4. 대여 처리 시작');
-                await this.processRent(deviceInfo);
-                if (DEBUG_ALERT) alert('5. 대여 처리 완료');
-            } else if (this.currentMode === 'return') {
-                if (DEBUG_ALERT) alert('4. 반납 처리 시작');
-                await this.processReturn(deviceInfo);
-                if (DEBUG_ALERT) alert('5. 반납 처리 완료');
-            }
-        } catch (error) {
-            alert('오류 발생: ' + (error.message || error.toString()));
-            this.showResult(false, '오류 발생', 'QR 코드 처리 중 오류가 발생했습니다: ' + (error.message || ''));
-        }
-    }
-
-    /**
-     * 스캔 취소
-     */
-    async cancelScan() {
-        await this.stopQrScanner();
-
-        if (this.currentMode === 'rent') {
-            this.showScreen('rentInfoScreen');
-        } else {
-            this.showScreen('mainScreen');
-        }
-    }
-
-    /**
-     * 대여 처리
-     */
-    async processRent(deviceInfo) {
-        this.showLoading(true);
-
-        try {
-            const response = await this.callApi({
-                action: 'rent',
-                deviceId: deviceInfo.deviceId,
-                deviceName: deviceInfo.deviceName,
-                renterName: this.rentInfo.renterName,
-                cell: this.rentInfo.cell
-            });
-
-            if (response && response.success) {
-                const data = response.data || {};
-                this.showResult(true, CONFIG.MESSAGES.RENT_SUCCESS, response.message || '대여 완료', {
-                    '디바이스 ID': deviceInfo.deviceId,
-                    '디바이스명': deviceInfo.deviceName,
-                    '대여자': data.renterName || this.rentInfo.renterName,
-                    '셀': data.cell || this.rentInfo.cell,
-                    '대여일시': this.formatDate(data.rentDate)
-                });
-            } else {
-                this.showResult(false, '대여 실패', (response && response.message) || '알 수 없는 오류');
-            }
-        } catch (error) {
-            console.error('대여 처리 오류:', error);
-            this.showResult(false, '오류 발생', CONFIG.MESSAGES.ERROR_API);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    /**
-     * 반납 처리
-     */
-    async processReturn(deviceInfo) {
-        this.showLoading(true);
-
-        try {
-            const response = await this.callApi({
-                action: 'return',
-                deviceId: deviceInfo.deviceId,
-                deviceName: deviceInfo.deviceName
-            });
-
-            if (response && response.success) {
-                const data = response.data || {};
-                this.showResult(true, CONFIG.MESSAGES.RETURN_SUCCESS, response.message || '반납 완료', {
-                    '디바이스 ID': deviceInfo.deviceId,
-                    '디바이스명': deviceInfo.deviceName,
-                    '대여자': data.renterName || '-',
-                    '대여일시': this.formatDate(data.rentDate),
-                    '반납일시': this.formatDate(data.returnDate)
-                });
-            } else {
-                this.showResult(false, '반납 실패', (response && response.message) || '알 수 없는 오류');
-            }
-        } catch (error) {
-            console.error('반납 처리 오류:', error);
-            this.showResult(false, '오류 발생', CONFIG.MESSAGES.ERROR_API);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    /**
      * API 호출
      */
     async callApi(data) {
         if (CONFIG.API_URL === 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE') {
-            // 테스트 모드 - API 미설정시 시뮬레이션
             return this.simulateApiResponse(data);
         }
-
         try {
             const response = await fetch(CONFIG.API_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain',
-                },
+                headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify(data)
             });
-
-            const result = await response.json();
-            return result;
+            return await response.json();
         } catch (error) {
             console.error('API 호출 오류:', error);
             throw error;
         }
     }
 
-    /**
-     * API 시뮬레이션 (테스트용)
-     */
     simulateApiResponse(data) {
-        console.log('📌 테스트 모드 - API 호출 시뮬레이션:', data);
-
+        console.log('📌 테스트 모드:', data);
         const now = new Date().toLocaleString('ko-KR');
 
-        if (data.action === 'rent') {
+        if (data.action === 'getStatus') {
             return {
                 success: true,
-                message: `${data.deviceId} 대여가 완료되었습니다.`,
-                data: {
-                    deviceId: data.deviceId,
-                    deviceName: data.deviceId,
-                    renterName: data.renterName,
-                    cell: data.cell,
-                    rentDate: now
-                }
-            };
-        } else if (data.action === 'return') {
-            return {
-                success: true,
-                message: `${data.deviceId} 반납이 완료되었습니다.`,
-                data: {
-                    deviceId: data.deviceId,
-                    deviceName: data.deviceId,
-                    renterName: '테스트 사용자',
-                    rentDate: '2026-01-26 09:00:00',
-                    returnDate: now
-                }
+                devices: [
+                    { deviceId: 'DEV001', deviceName: 'iPhone 15 Pro', status: 'available', renter: '', cell: '', rentDate: '' },
+                    { deviceId: 'DEV002', deviceName: 'Galaxy S24', status: 'rented', renter: '홍길동', cell: '1셀', rentDate: '2026-04-13 10:00:00' },
+                    { deviceId: 'DEV003', deviceName: 'iPad Pro 12.9', status: 'available', renter: '', cell: '', rentDate: '' }
+                ]
             };
         }
-
+        if (data.action === 'rent') {
+            return { success: true, message: `${data.deviceId} 대여 완료`, data: { ...data, rentDate: now } };
+        }
+        if (data.action === 'return') {
+            return { success: true, message: `${data.deviceId} 반납 완료`, data: { ...data, returnDate: now } };
+        }
         return { success: false, message: '알 수 없는 액션' };
     }
 
-    /**
-     * 결과 화면 표시
-     */
-    showResult(isSuccess, title, message, details = null) {
-        const resultIcon = document.getElementById('resultIcon');
-        const resultTitle = document.getElementById('resultTitle');
-        const resultMessage = document.getElementById('resultMessage');
-        const resultDetails = document.getElementById('resultDetails');
-
-        resultIcon.textContent = isSuccess ? '✅' : '❌';
-        resultIcon.className = `result-icon ${isSuccess ? 'success' : 'error'}`;
-        resultTitle.textContent = title;
-        resultMessage.textContent = message;
-
-        if (details) {
-            let detailsHtml = '';
-            for (const [label, value] of Object.entries(details)) {
-                detailsHtml += `
-                    <div class="detail-row">
-                        <span class="detail-label">${label}</span>
-                        <span class="detail-value">${value}</span>
-                    </div>
-                `;
-            }
-            resultDetails.innerHTML = detailsHtml;
-            resultDetails.style.display = 'block';
-        } else {
-            resultDetails.style.display = 'none';
-        }
-
-        this.showScreen('resultScreen');
-    }
-
-    /**
-     * 로딩 표시
-     */
     showLoading(show) {
         const overlay = document.getElementById('loadingOverlay');
-        if (show) {
-            overlay.classList.add('active');
-        } else {
-            overlay.classList.remove('active');
-        }
+        if (show) overlay.classList.add('active');
+        else overlay.classList.remove('active');
     }
 
     /**
-     * QR 생성 화면 열기 (관리자 인증 필요)
+     * QR 생성 (관리자)
      */
     openQrGenerator() {
         if (this._adminAuthenticated) {
             this._openQrGeneratorScreen();
             return;
         }
-        // 비밀번호 모달 열기
         const modal = document.getElementById('adminPasswordModal');
         document.getElementById('adminPassword').value = '';
         document.getElementById('adminPasswordError').textContent = '';
@@ -797,9 +764,6 @@ class DeviceRentalApp {
         document.getElementById('adminPassword').focus();
     }
 
-    /**
-     * 관리자 비밀번호 확인
-     */
     verifyAdminPassword() {
         const input = document.getElementById('adminPassword').value;
         if (input === CONFIG.ADMIN_PASSWORD) {
@@ -813,9 +777,6 @@ class DeviceRentalApp {
         }
     }
 
-    /**
-     * QR 생성 화면 실제 열기
-     */
     _openQrGeneratorScreen() {
         document.getElementById('genDeviceId').value = '';
         document.getElementById('genDeviceName').value = '';
@@ -825,9 +786,6 @@ class DeviceRentalApp {
         document.getElementById('genDeviceId').focus();
     }
 
-    /**
-     * QR 코드 생성
-     */
     generateQrCode() {
         const deviceId = document.getElementById('genDeviceId').value.trim();
         const deviceName = document.getElementById('genDeviceName').value.trim() || deviceId;
@@ -841,9 +799,7 @@ class DeviceRentalApp {
         const qrContainer = document.getElementById('qrCodeDisplay');
         qrContainer.innerHTML = '';
 
-        // QR 코드에 URL 인코딩하여 저장 (한글 등 특수문자 안전하게 처리)
         const qrContent = encodeURIComponent(`${deviceId}|${deviceName}`);
-        console.log('생성된 QR 내용 (인코딩):', qrContent);
 
         new QRCode(qrContainer, {
             text: qrContent,
@@ -859,9 +815,6 @@ class DeviceRentalApp {
         document.getElementById('qrResultArea').classList.add('active');
     }
 
-    /**
-     * 생성된 QR 코드 다운로드
-     */
     downloadGeneratedQr() {
         const qrContainer = document.getElementById('qrCodeDisplay');
         const img = qrContainer.querySelector('img');
@@ -871,18 +824,12 @@ class DeviceRentalApp {
         const link = document.createElement('a');
         link.download = `QR_${deviceId}.png`;
 
-        if (canvas) {
-            link.href = canvas.toDataURL('image/png');
-        } else if (img) {
-            link.href = img.src;
-        }
+        if (canvas) link.href = canvas.toDataURL('image/png');
+        else if (img) link.href = img.src;
 
         link.click();
     }
 
-    /**
-     * 탭 전환
-     */
     switchTab(tab) {
         document.getElementById('tabSingle').classList.remove('active');
         document.getElementById('tabBatch').classList.remove('active');
@@ -898,9 +845,6 @@ class DeviceRentalApp {
         }
     }
 
-    /**
-     * 일괄 QR 코드 생성
-     */
     generateBatchQrCodes() {
         const input = document.getElementById('batchInput').value.trim();
 
@@ -909,7 +853,6 @@ class DeviceRentalApp {
             return;
         }
 
-        // 줄바꿈으로 분리 (Windows/Mac/Linux 모두 지원)
         const lines = input.split(/\r?\n/).filter(line => line.trim());
         const resultsContainer = document.getElementById('batchResultArea');
         resultsContainer.innerHTML = '';
@@ -948,10 +891,7 @@ class DeviceRentalApp {
 
             resultsContainer.appendChild(card);
 
-            // QR 코드에 URL 인코딩하여 저장 (한글 등 특수문자 안전하게 처리)
             const qrContent = encodeURIComponent(`${deviceId}|${deviceName}`);
-            console.log('생성된 QR 내용 (인코딩):', qrContent);
-
             new QRCode(qrWrapper, {
                 text: qrContent,
                 width: 120,
@@ -963,9 +903,6 @@ class DeviceRentalApp {
         });
     }
 
-    /**
-     * 일괄 QR 다운로드
-     */
     downloadBatchQr(qrWrapper, deviceId) {
         const img = qrWrapper.querySelector('img');
         const canvas = qrWrapper.querySelector('canvas');
@@ -973,17 +910,13 @@ class DeviceRentalApp {
         const link = document.createElement('a');
         link.download = `QR_${deviceId}.png`;
 
-        if (canvas) {
-            link.href = canvas.toDataURL('image/png');
-        } else if (img) {
-            link.href = img.src;
-        }
+        if (canvas) link.href = canvas.toDataURL('image/png');
+        else if (img) link.href = img.src;
 
         link.click();
     }
 }
 
-// 앱 시작
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new DeviceRentalApp();
 });

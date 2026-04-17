@@ -255,6 +255,32 @@ function getCurrentRentals() {
 }
 
 /**
+ * 시트 값을 읽되, 병합된 셀의 값을 병합 범위 내 모든 셀로 펼쳐서 반환
+ */
+function getExpandedValues(sheet) {
+  const range = sheet.getDataRange();
+  const values = range.getValues();
+  const mergedRanges = range.getMergedRanges();
+  const baseRow = range.getRow();
+  const baseCol = range.getColumn();
+
+  for (const mr of mergedRanges) {
+    const rOffset = mr.getRow() - baseRow;
+    const cOffset = mr.getColumn() - baseCol;
+    const numRows = mr.getNumRows();
+    const numCols = mr.getNumColumns();
+    const value = values[rOffset][cOffset];
+
+    for (let r = 0; r < numRows; r++) {
+      for (let c = 0; c < numCols; c++) {
+        values[rOffset + r][cOffset + c] = value;
+      }
+    }
+  }
+  return values;
+}
+
+/**
  * 전체 디바이스 현황 조회 (대여 중 + 미대여 디바이스 모두)
  */
 function getAllDeviceStatus() {
@@ -286,20 +312,27 @@ function getAllDeviceStatus() {
     }
   }
 
-  // 디바이스 목록 시트에서 전체 디바이스 수집
+  // 디바이스 목록 시트에서 전체 디바이스 수집 (병합 셀 펼쳐서 읽기)
+  // A열: 카테고리 (예: 애플(33개)), B열: 디바이스명 — 디바이스명을 식별자로 사용
   if (deviceSheet) {
-    const devData = deviceSheet.getDataRange().getValues();
+    const devData = getExpandedValues(deviceSheet);
     for (let i = 1; i < devData.length; i++) {
-      const deviceId = String(devData[i][0]).trim();
-      if (!deviceId) continue;
+      const category = String(devData[i][0]).trim();
+      const deviceName = String(devData[i][1]).trim();
+      if (!deviceName) continue;
+
+      const deviceId = deviceName;
 
       if (rentedMap[deviceId]) {
-        devices.push(rentedMap[deviceId]);
+        const r = rentedMap[deviceId];
+        r.category = category;
+        devices.push(r);
         delete rentedMap[deviceId];
       } else {
         devices.push({
           deviceId: deviceId,
-          deviceName: devData[i][1],
+          deviceName: deviceName,
+          category: category,
           renter: '',
           cell: '',
           rentDate: '',
