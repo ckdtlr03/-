@@ -7,6 +7,13 @@
 const SHEET_NAME = '대여기록';
 const DEVICE_SHEET_NAME = '디바이스목록';
 
+// 스크립트 속성에서 값을 읽음 (프로젝트 설정 > 스크립트 속성에서 등록)
+// - KAKAOWORK_WEBHOOK_URL: 카카오워크 Incoming Webhook URL
+// - RENTAL_STATUS_URL: 알림 버튼이 열 대여 현황 페이지 URL (미설정 시 버튼 숨김)
+function getConfig_(key) {
+  return PropertiesService.getScriptProperties().getProperty(key) || '';
+}
+
 /**
  * 웹 앱 초기 설정 - GET 요청 처리
  */
@@ -67,7 +74,6 @@ function processRent(data) {
     sheet.setFrozenRows(1);
   }
 
-  // 디바이스 이름: QR 코드에서 전달받은 값 우선 사용
   const deviceName = data.deviceName || data.deviceId;
 
   // 현재 대여 중인지 확인
@@ -97,6 +103,13 @@ function processRent(data) {
     dateStr,
     ''  // 반납일시는 비워둠
   ]);
+
+  sendKakaoWorkNotification('rent', {
+    deviceName: deviceName,
+    renterName: data.renterName,
+    cell: data.cell,
+    rentDate: dateStr
+  });
 
   return {
     success: true,
@@ -134,6 +147,14 @@ function processReturn(data) {
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
 
   sheet.getRange(currentRental.row, 7).setValue(dateStr);
+
+  sendKakaoWorkNotification('return', {
+    deviceName: currentRental.deviceName,
+    renterName: currentRental.renter,
+    cell: currentRental.cell,
+    rentDate: currentRental.rentDate,
+    returnDate: dateStr
+  });
 
   return {
     success: true,
@@ -348,6 +369,109 @@ function getAllDeviceStatus() {
   }
 
   return { success: true, devices: devices };
+}
+
+/**
+ * 카카오워크 Incoming Webhook 알림 전송 (Block Kit)
+ */
+function sendKakaoWorkNotification(action, info) {
+  const webhookUrl = getConfig_('KAKAOWORK_WEBHOOK_URL');
+  if (!webhookUrl) return;
+  const rentalStatusUrl = getConfig_('RENTAL_STATUS_URL');
+
+  const formatDate = (v) => {
+    if (!v) return '-';
+    if (v instanceof Date) {
+      return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+    }
+    return String(v);
+  };
+
+  const rentDateStr = formatDate(info.rentDate);
+  const returnDateStr = formatDate(info.returnDate);
+
+  const isRent = action === 'rent';
+  const headerText = isRent ? '디바이스 대여' : '디바이스 반납';
+  const fallbackText = isRent
+    ? `[대여] ${info.deviceName} — ${info.renterName} (${info.cell})`
+    : `[반납] ${info.deviceName} — ${info.renterName}`;
+
+  const descriptions = [
+    { type: 'description', term: '디바이스', content: { type: 'text', text: String(info.deviceName), markdown: false }, accent: true },
+    { type: 'description', term: isRent ? '대여자' : '반납자', content: { type: 'text', text: String(info.renterName), markdown: false }, accent: true },
+    { type: 'description', term: '셀', content: { type: 'text', text: String(info.cell || '-'), markdown: false }, accent: true },
+    { type: 'description', term: '대여일시', content: { type: 'text', text: rentDateStr, markdown: false }, accent: true }
+  ];
+
+  if (!isRent) {
+    descriptions.push({
+      type: 'description',
+      term: '반납일시',
+      content: { type: 'text', text: returnDateStr, markdown: false },
+      accent: true
+    });
+  }
+
+  const blocks = [
+    { type: 'header', text: headerText, style: isRent ? 'blue' : 'yellow' },
+    { type: 'divider' },
+    ...descriptions
+  ];
+
+  if (rentalStatusUrl) {
+    blocks.push({
+      type: 'button',
+      text: '대여 현황 보기',
+      style: 'default',
+      action_type: 'open_system_browser',
+      value: rentalStatusUrl
+    });
+  }
+
+  const payload = { text: fallbackText, blocks: blocks };
+
+  try {
+    const response = UrlFetchApp.fetch(webhookUrl, {
+      method: 'post',
+      contentType: 'application/json; charset=utf-8',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    Logger.log('KakaoWork webhook status: ' + response.getResponseCode());
+    Logger.log('KakaoWork webhook body: ' + response.getContentText());
+  } catch (err) {
+    Logger.log('KakaoWork webhook failed: ' + err);
+  }
+}
+
+/**
+ * 웹훅 디버깅용 - Apps Script 에디터에서 직접 실행
+ * 1) testKakaoWorkPlain — 단순 text만 전송 (가장 기본)
+ * 2) testKakaoWorkBlocks — Block Kit 전송
+ * 실행 후 '실행 기록(Executions)'에서 상태코드/응답 확인
+ */
+function testKakaoWorkPlain() {
+  const webhookUrl = getConfig_('KAKAOWORK_WEBHOOK_URL');
+  if (!webhookUrl) {
+    Logger.log('KAKAOWORK_WEBHOOK_URL 스크립트 속성이 설정되지 않았습니다.');
+    return;
+  }
+  const res = UrlFetchApp.fetch(webhookUrl, {
+    method: 'post',
+    contentType: 'application/json; charset=utf-8',
+    payload: JSON.stringify({ text: '디바이스 알림 테스트 (plain)' }),
+    muteHttpExceptions: true
+  });
+  Logger.log('status=' + res.getResponseCode() + ' body=' + res.getContentText());
+}
+
+function testKakaoWorkBlocks() {
+  sendKakaoWorkNotification('rent', {
+    deviceName: '테스트 디바이스',
+    renterName: '홍길동',
+    cell: '1셀',
+    rentDate: '2026-04-20 10:00:00'
+  });
 }
 
 /**

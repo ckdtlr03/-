@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python -m http.server:*)"
+      "Bash(python -m http.server:*)",
+      "Bash(netstat -ano)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/index.html)",
+      "Bash(node --check \"c:/Users/ckdtl/Downloads/Device/js/app.js\")",
+      "Bash(node --check \"c:/Users/ckdtl/Downloads/Device/js/config.js\")",
+      "Bash(curl -s http://localhost:8000/index.html)",
+      "Bash(curl -s http://localhost:8000/js/app.js)",
+      "Bash(curl -s http://localhost:8000/js/config.js)",
+      "Bash(curl -s http://localhost:8000/css/style.css)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://ckdtlr03.github.io/-/\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\kakaogames\\PyCharmMiscProject\\Device"
     ]
   }
 }
