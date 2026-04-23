@@ -131,26 +131,24 @@ class DeviceRentalApp {
             }
         };
 
-        // 해상도까지 포함한 전체 MediaStreamConstraints를 1번째 인자로 전달
-        const constraints = {
-            deviceId: { exact: cam.id },
-            width: { ideal: 1920, min: 1280 },
-            height: { ideal: 1080, min: 720 }
-        };
-
         try {
-            await this._html5Qr.start(constraints, config, onScan, onError);
+            // 1) 안전하게 기본값으로 시작
+            await this._html5Qr.start(cam.id, config, onScan, onError);
             statusEl.textContent = `시작됨 · ${cam.label || 'unknown'}`;
-        } catch (err) {
-            console.warn('strict constraints failed, retrying', err);
-            // 일부 브라우저가 high-res를 거부하면 cameraId만으로 폴백
+
+            // 2) 시작 후 해상도 업그레이드 시도 (공식 applyVideoConstraints 사용)
             try {
-                await this._html5Qr.start(cam.id, config, onScan, onError);
-                statusEl.textContent = `시작됨 (저해상도) · ${cam.label || 'unknown'}`;
-            } catch (err2) {
-                console.error('camera start error:', err2);
-                statusEl.textContent = '카메라 시작 실패: ' + (err2.message || err2);
+                await this._html5Qr.applyVideoConstraints({
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    advanced: [{ focusMode: 'continuous' }]
+                });
+            } catch (e) {
+                console.warn('resolution upgrade failed:', e);
             }
+        } catch (err) {
+            console.error('camera start error:', err);
+            statusEl.textContent = '카메라 시작 실패: ' + (err.message || err);
         }
     }
 
