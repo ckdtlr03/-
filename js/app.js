@@ -117,24 +117,34 @@ class DeviceRentalApp {
             qrbox: (vw, vh) => {
                 const edge = Math.floor(Math.min(vw, vh) * 0.9);
                 return { width: edge, height: edge };
-            },
-            videoConstraints: {
-                deviceId: cam.id,
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                focusMode: 'continuous'
             }
         };
+
+        this._scanFrameCount = 0;
         const onScan = (decodedText) => this.handleScannedCode(decodedText);
-        const onError = () => {};
+        const onError = () => {
+            this._scanFrameCount++;
+            if (this._scanFrameCount % 15 === 0) {
+                const track = this._getVideoTrack();
+                const res = track ? `${track.getSettings().width}×${track.getSettings().height}` : '?';
+                statusEl.textContent = `스캔중 · ${cam.label || ''} · ${res} · ${this._scanFrameCount}프레임`;
+            }
+        };
 
         try {
             await this._html5Qr.start(cam.id, config, onScan, onError);
-            statusEl.textContent = `카메라: ${cam.label || 'unknown'}`;
+            statusEl.textContent = `시작됨 · ${cam.label || 'unknown'}`;
         } catch (err) {
             console.error('camera start error:', err);
             statusEl.textContent = '카메라 시작 실패: ' + (err.message || err);
         }
+    }
+
+    _getVideoTrack() {
+        const video = document.querySelector('#qrReader video');
+        if (!video || !video.srcObject) return null;
+        const tracks = video.srcObject.getVideoTracks();
+        return tracks && tracks[0];
     }
 
     async switchQrCamera() {
