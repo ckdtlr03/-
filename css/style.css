@@ -1091,55 +1091,6 @@ input[type="text"]::placeholder {
     font-size: 14px;
 }
 
-/* ── QR 스캔 화면 ── */
-.qr-scan-body {
-    padding: 20px 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-}
-.qr-reader {
-    width: 100%;
-    max-width: 400px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-}
-.qr-reader video {
-    width: 100% !important;
-    border-radius: 12px;
-}
-.qr-reader__dashboard_section_csr {
-    background: var(--panel2) !important;
-}
-.qr-reader button {
-    color: var(--text) !important;
-    background: var(--panel2) !important;
-    border: 1px solid var(--border2) !important;
-    border-radius: 6px !important;
-    padding: 6px 10px !important;
-    margin: 4px !important;
-    font-family: inherit !important;
-}
-.qr-reader select {
-    background: var(--panel2) !important;
-    color: var(--text) !important;
-    border: 1px solid var(--border2) !important;
-    border-radius: 6px !important;
-}
-.qr-scan-status {
-    color: var(--text-dim);
-    font-size: 14px;
-    text-align: center;
-}
-.qr-switch-btn {
-    padding: 10px 20px;
-    font-size: 13px;
-    max-width: 200px;
-}
-
 /* ── 셀별 대여 버튼 ── */
 .cell-rent-buttons {
     display: grid;
