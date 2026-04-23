@@ -70,94 +70,139 @@ class DeviceRentalApp {
     /**
      * 촬영된 이미지에서 QR 디코딩 → 대여/반납 모달 열기
      */
-    async decodeQrFromImage(file) {
-        this.showLoading(true);
+    /**
+     * 라이브 스캐너 시작 — getUserMedia 직접 호출 + BarcodeDetector/jsQR 디코딩 루프
+     */
+    async startLiveScanner() {
+        this.showScreen('qrScanScreen');
+        const statusEl = document.getElementById('qrScanStatus');
+        const video = document.getElementById('qrVideo');
+
+        statusEl.textContent = '카메라를 여는 중...';
+        await this.stopLiveScanner();
+        this._qrDetected = false;
+
         try {
-            const img = await this._loadImageFromFile(file);
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            });
+            this._qrStream = stream;
+            video.srcObject = stream;
+            await video.play();
 
-            // 1) BarcodeDetector 우선 (Android Chrome/Edge 하드웨어 가속)
-            let decoded = await this._decodeWithBarcodeDetector(img);
+            const track = stream.getVideoTracks()[0];
+            const { width, height } = track.getSettings();
+            statusEl.textContent = `QR을 중앙에 맞추면 자동 인식됩니다. (${width}×${height})`;
 
-            // 2) jsQR 폴백 — 여러 해상도로 시도
-            if (!decoded && typeof jsQR !== 'undefined') {
-                for (const edge of [1600, 2000, 1200, 800]) {
-                    decoded = this._decodeWithJsQR(img, edge);
-                    if (decoded) break;
+            // BarcodeDetector 우선, 없으면 jsQR
+            const hasDetector = 'BarcodeDetector' in window;
+            const detector = hasDetector ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+
+            this._qrCanvas = document.createElement('canvas');
+            this._qrCtx = this._qrCanvas.getContext('2d', { willReadFrequently: true });
+
+            const loop = async () => {
+                if (!this._qrStream || this._qrDetected) return;
+                if (video.readyState >= 2) {
+                    try {
+                        const decoded = await this._scanVideoFrame(video, detector);
+                        if (decoded) {
+                            this._qrDetected = true;
+                            await this.stopLiveScanner();
+                            this.showScreen('homeScreen');
+                            await this._handleDecodedQr(decoded);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('scan error:', e);
+                    }
                 }
-            }
-
-            this.showLoading(false);
-
-            if (!decoded) {
-                alert(`QR 코드를 인식하지 못했습니다.\n사진 크기: ${img.naturalWidth}×${img.naturalHeight}\nQR이 화면 중앙에 선명하게 나오도록 다시 찍어주세요.`);
-                return;
-            }
-
-            let deviceId = '';
-            let deviceName = '';
-            try {
-                const url = new URL(decoded);
-                deviceId = url.searchParams.get('d') || url.searchParams.get('id') || '';
-                deviceName = url.searchParams.get('name') || '';
-            } catch {
-                deviceId = decoded.trim();
-            }
-
-            if (!deviceId) {
-                alert('인식된 QR에 디바이스 정보가 없습니다.\n내용: ' + decoded);
-                return;
-            }
-
-            await this.openDeviceActionById(deviceId, deviceName);
+                this._qrRafId = requestAnimationFrame(loop);
+            };
+            this._qrRafId = requestAnimationFrame(loop);
         } catch (err) {
-            this.showLoading(false);
-            alert('QR 처리 실패: ' + (err.message || err));
+            console.error('getUserMedia failed:', err);
+            statusEl.textContent = '카메라 시작 실패: ' + (err.message || err);
         }
     }
 
-    _loadImageFromFile(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error('이미지 로드 실패'));
-                img.src = e.target.result;
-            };
-            reader.onerror = () => reject(new Error('파일 읽기 실패'));
-            reader.readAsDataURL(file);
-        });
+    async stopLiveScanner() {
+        if (this._qrRafId) {
+            cancelAnimationFrame(this._qrRafId);
+            this._qrRafId = null;
+        }
+        if (this._qrStream) {
+            this._qrStream.getTracks().forEach(t => t.stop());
+            this._qrStream = null;
+        }
+        const video = document.getElementById('qrVideo');
+        if (video) { video.pause(); video.srcObject = null; }
     }
 
-    async _decodeWithBarcodeDetector(img) {
-        if (!('BarcodeDetector' in window)) return null;
-        try {
-            const detector = new BarcodeDetector({ formats: ['qr_code'] });
-            const bitmap = await createImageBitmap(img);
-            const results = await detector.detect(bitmap);
-            bitmap.close && bitmap.close();
-            if (results && results.length > 0) return results[0].rawValue;
-        } catch (e) {
-            console.warn('BarcodeDetector failed:', e);
+    async _scanVideoFrame(video, detector) {
+        // BarcodeDetector가 있으면 video 요소 직접 사용 (빠름)
+        if (detector) {
+            try {
+                const results = await detector.detect(video);
+                if (results && results.length > 0) return results[0].rawValue;
+                return null;
+            } catch (e) {
+                // iOS 등에서 video 직접 입력 실패 시 canvas 경유
+            }
+        }
+
+        // canvas로 프레임 캡처
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        if (!vw || !vh) return null;
+
+        // 긴 변 800px로 다운스케일 (성능)
+        const scale = Math.min(1, 800 / Math.max(vw, vh));
+        const w = Math.round(vw * scale);
+        const h = Math.round(vh * scale);
+        this._qrCanvas.width = w;
+        this._qrCanvas.height = h;
+        this._qrCtx.drawImage(video, 0, 0, w, h);
+
+        if (detector) {
+            try {
+                const results = await detector.detect(this._qrCanvas);
+                if (results && results.length > 0) return results[0].rawValue;
+            } catch {}
+        }
+
+        if (typeof jsQR !== 'undefined') {
+            const imageData = this._qrCtx.getImageData(0, 0, w, h);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: 'dontInvert'
+            });
+            if (code) return code.data;
         }
         return null;
     }
 
-    _decodeWithJsQR(img, maxEdge) {
-        const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
-        const w = Math.round(img.naturalWidth * scale);
-        const h = Math.round(img.naturalHeight * scale);
+    async _handleDecodedQr(decoded) {
+        let deviceId = '';
+        let deviceName = '';
+        try {
+            const url = new URL(decoded);
+            deviceId = url.searchParams.get('d') || url.searchParams.get('id') || '';
+            deviceName = url.searchParams.get('name') || '';
+        } catch {
+            deviceId = decoded.trim();
+        }
 
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        const imageData = ctx.getImageData(0, 0, w, h);
-        const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'attemptBoth'
-        });
-        return code ? code.data : null;
+        if (!deviceId) {
+            alert('인식된 QR에 디바이스 정보가 없습니다.\n내용: ' + decoded);
+            return;
+        }
+
+        await this.openDeviceActionById(deviceId, deviceName);
     }
 
     checkApiConfig() {
@@ -223,16 +268,15 @@ class DeviceRentalApp {
             this.loadDevices();
         });
 
-        // 홈 → QR 인식: 기본 카메라 앱 열기
+        // 홈 → QR 인식: 라이브 스캐너 시작
         document.getElementById('enterScanBtn').addEventListener('click', () => {
-            document.getElementById('qrPhotoInput').click();
+            this.startLiveScanner();
         });
 
-        // 사진 촬영/선택 후 QR 디코딩
-        document.getElementById('qrPhotoInput').addEventListener('change', async (e) => {
-            const file = e.target.files && e.target.files[0];
-            e.target.value = '';
-            if (file) await this.decodeQrFromImage(file);
+        // QR 스캔 → 홈
+        document.getElementById('backFromScanBtn').addEventListener('click', async () => {
+            await this.stopLiveScanner();
+            this.showScreen('homeScreen');
         });
 
         // 디바이스 현황 → 홈
