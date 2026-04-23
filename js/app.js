@@ -73,37 +73,50 @@ class DeviceRentalApp {
     async openQrScanner() {
         this.showScreen('qrScanScreen');
         const statusEl = document.getElementById('qrScanStatus');
-        statusEl.textContent = '카메라 권한을 확인하는 중...';
+        statusEl.textContent = '카메라를 여는 중...';
 
-        if (typeof Html5Qrcode === 'undefined') {
-            statusEl.textContent = 'QR 스캐너 라이브러리를 불러오지 못했습니다.';
+        if (typeof Html5QrcodeScanner === 'undefined') {
+            statusEl.textContent = 'QR 스캐너 라이브러리 로드 실패. 페이지를 새로고침해주세요.';
+            console.error('Html5QrcodeScanner is undefined');
             return;
         }
 
-        try {
-            if (!this._html5Qr) {
-                this._html5Qr = new Html5Qrcode('qrReader');
-            }
-            this._qrProcessing = false;
+        // 기존 스캐너 정리
+        await this.closeQrScanner();
 
-            await this._html5Qr.start(
-                { facingMode: 'environment' },
-                { fps: 10, qrbox: { width: 240, height: 240 } },
-                (decodedText) => this.handleScannedCode(decodedText),
-                () => {}
+        this._qrProcessing = false;
+
+        try {
+            this._html5Scanner = new Html5QrcodeScanner(
+                'qrReader',
+                {
+                    fps: 10,
+                    qrbox: { width: 240, height: 240 },
+                    rememberLastUsedCamera: true,
+                    showTorchButtonIfSupported: true,
+                    supportedScanTypes: [0]
+                },
+                false
             );
-            statusEl.textContent = '카메라를 QR 코드에 맞춰주세요.';
+            this._html5Scanner.render(
+                (decodedText) => this.handleScannedCode(decodedText),
+                (err) => { /* frame parse errors — ignore */ }
+            );
+            statusEl.textContent = '카메라를 QR 코드에 맞춰주세요. (권한 요청이 뜨면 허용)';
         } catch (err) {
-            statusEl.textContent = '카메라 접근 실패: ' + (err.message || err);
+            console.error('QR scanner init error:', err);
+            statusEl.textContent = '카메라 시작 실패: ' + (err.message || err);
         }
     }
 
     async closeQrScanner() {
-        if (this._html5Qr) {
+        if (this._html5Scanner) {
             try {
-                await this._html5Qr.stop();
-                this._html5Qr.clear();
-            } catch {}
+                await this._html5Scanner.clear();
+            } catch (err) {
+                console.warn('scanner clear error:', err);
+            }
+            this._html5Scanner = null;
         }
     }
 
