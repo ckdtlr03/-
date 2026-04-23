@@ -68,55 +68,66 @@ class DeviceRentalApp {
     }
 
     /**
-     * QR 스캔 화면 열기 — 카메라 시작
+     * QR 스캔 화면 열기 — 후면 카메라 자동 시작
      */
     async openQrScanner() {
         this.showScreen('qrScanScreen');
         const statusEl = document.getElementById('qrScanStatus');
         statusEl.textContent = '카메라를 여는 중...';
 
-        if (typeof Html5QrcodeScanner === 'undefined') {
+        if (typeof Html5Qrcode === 'undefined') {
             statusEl.textContent = 'QR 스캐너 라이브러리 로드 실패. 페이지를 새로고침해주세요.';
-            console.error('Html5QrcodeScanner is undefined');
+            console.error('Html5Qrcode is undefined');
             return;
         }
 
-        // 기존 스캐너 정리
         await this.closeQrScanner();
-
         this._qrProcessing = false;
 
+        const config = { fps: 10, qrbox: { width: 240, height: 240 } };
+        const onScan = (decodedText) => this.handleScannedCode(decodedText);
+        const onError = () => {}; // 프레임별 실패는 무시
+
         try {
-            this._html5Scanner = new Html5QrcodeScanner(
-                'qrReader',
-                {
-                    fps: 10,
-                    qrbox: { width: 240, height: 240 },
-                    rememberLastUsedCamera: true,
-                    showTorchButtonIfSupported: true,
-                    supportedScanTypes: [0]
-                },
-                false
-            );
-            this._html5Scanner.render(
-                (decodedText) => this.handleScannedCode(decodedText),
-                (err) => { /* frame parse errors — ignore */ }
-            );
-            statusEl.textContent = '카메라를 QR 코드에 맞춰주세요. (권한 요청이 뜨면 허용)';
+            this._html5Qr = new Html5Qrcode('qrReader');
+
+            // 1) facingMode: 'environment' 로 바로 후면 시도
+            try {
+                await this._html5Qr.start({ facingMode: 'environment' }, config, onScan, onError);
+                statusEl.textContent = '카메라를 QR 코드에 맞춰주세요.';
+                return;
+            } catch (err) {
+                console.warn('facingMode start failed, trying camera list', err);
+            }
+
+            // 2) 실패 시 카메라 목록에서 'back/rear' 라벨 찾기
+            const cameras = await Html5Qrcode.getCameras();
+            if (!cameras || cameras.length === 0) {
+                statusEl.textContent = '사용 가능한 카메라가 없습니다.';
+                return;
+            }
+            const back = cameras.find(c => /back|rear|환경|후면/i.test(c.label));
+            const cameraId = back ? back.id : cameras[cameras.length - 1].id;
+
+            await this._html5Qr.start(cameraId, config, onScan, onError);
+            statusEl.textContent = '카메라를 QR 코드에 맞춰주세요.';
         } catch (err) {
-            console.error('QR scanner init error:', err);
+            console.error('QR scanner start error:', err);
             statusEl.textContent = '카메라 시작 실패: ' + (err.message || err);
         }
     }
 
     async closeQrScanner() {
-        if (this._html5Scanner) {
+        if (this._html5Qr) {
             try {
-                await this._html5Scanner.clear();
+                if (this._html5Qr.isScanning) {
+                    await this._html5Qr.stop();
+                }
+                this._html5Qr.clear();
             } catch (err) {
-                console.warn('scanner clear error:', err);
+                console.warn('scanner close error:', err);
             }
-            this._html5Scanner = null;
+            this._html5Qr = null;
         }
     }
 
