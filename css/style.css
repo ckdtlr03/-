@@ -1091,4 +1091,43 @@ input[type="text"]::placeholder {
     font-size: 14px;
 }
 
-/* ── 관리자 인증 ── */
+/* ── 셀별 대여 버튼 ── */
+.cell-rent-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+}
+.cell-rent-buttons .primary-btn {
+    background: #fff;
+    color: #111;
+    border-color: #fff;
+    padding: 14px 12px;
+    font-weight: 600;
+}
+.cell-rent-buttons .primary-btn:hover {
+    opacity: 0.9;
+}
+.secondary-btn.cancel-full {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* ── 이름 기억 체크박스 ── */
+.remember-name-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--text-dim);
+    cursor: pointer;
+    user-select: none;
+}
+.remember-name-option input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent2);
+    cursor: pointer;
+}
+

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR 생성기 (관리자)</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
+    <style>
+        .qr-wrap {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 24px 16px 48px;
+        }
+        .qr-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .qr-header h1 {
+            font-size: 20px;
+            flex: 1;
+        }
+        .qr-section {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .qr-section h2 {
+            font-size: 15px;
+            margin-bottom: 14px;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+        .auth-input {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        .qr-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent2);
+            color: #111;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .qr-btn:hover { opacity: 0.9; }
+        .qr-btn.sm { padding: 6px 12px; font-size: 12px; width: auto; }
+        .qr-btn.secondary { background: var(--panel2); color: var(--text); border: 1px solid var(--border2); }
+        .qr-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .qr-bar .count {
+            color: var(--text-dim);
+            font-size: 13px;
+            margin-left: auto;
+        }
+        .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .qr-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 14px 10px 10px;
+            text-align: center;
+            color: #111;
+        }
+        .qr-card .qr-img {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .qr-card .qr-img img,
+        .qr-card .qr-img canvas {
+            display: block;
+        }
+        .qr-card .qr-name {
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+        .qr-card .qr-id {
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        .qr-card .qr-dl {
+            font-size: 11px;
+            padding: 6px 10px;
+            background: #111;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .qr-msg {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+        .qr-hidden { display: none; }
+        .back-link {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .back-link:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+    <div class="qr-wrap">
+        <div class="qr-header">
+            <a href="index.html" class="back-link">← 돌아가기</a>
+            <h1 style="text-align:center;">QR 생성기</h1>
+            <span style="width:60px;"></span>
+        </div>
+
+        <!-- 인증 섹션 -->
+        <div id="authSection" class="qr-section">
+            <h2>관리자 비밀번호</h2>
+            <input id="authInput" class="auth-input" type="password" placeholder="비밀번호 입력" autocomplete="off">
+            <button id="authBtn" class="qr-btn">확인</button>
+            <div id="authMsg" class="qr-msg qr-hidden" style="color:#ff6b6b;">비밀번호가 틀립니다.</div>
+        </div>
+
+        <!-- 생성기 섹션 -->
+        <div id="genSection" class="qr-section qr-hidden">
+            <h2>디바이스 QR 일괄 생성</h2>
+            <div class="qr-bar">
+                <button id="loadDevicesBtn" class="qr-btn sm">디바이스 목록 불러오기</button>
+                <button id="downloadAllBtn" class="qr-btn sm secondary qr-hidden">전체 다운로드</button>
+                <span id="deviceCount" class="count"></span>
+            </div>
+            <div id="qrGrid" class="qr-grid"></div>
+            <div id="genMsg" class="qr-msg">먼저 [디바이스 목록 불러오기]를 눌러주세요.</div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+    (function() {
+        const authSection = document.getElementById('authSection');
+        const authInput = document.getElementById('authInput');
+        const authBtn = document.getElementById('authBtn');
+        const authMsg = document.getElementById('authMsg');
+        const genSection = document.getElementById('genSection');
+
+        authInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') authBtn.click(); });
+        authBtn.addEventListener('click', () => {
+            if (authInput.value === CONFIG.ADMIN_PASSWORD) {
+                authSection.classList.add('qr-hidden');
+                genSection.classList.remove('qr-hidden');
+            } else {
+                authMsg.classList.remove('qr-hidden');
+                authInput.value = '';
+                authInput.focus();
+            }
+        });
+
+        const loadBtn = document.getElementById('loadDevicesBtn');
+        const grid = document.getElementById('qrGrid');
+        const msg = document.getElementById('genMsg');
+        const countEl = document.getElementById('deviceCount');
+        const downloadAllBtn = document.getElementById('downloadAllBtn');
+        let devicesCache = [];
+
+        function buildQrUrl(device) {
+            const base = CONFIG.APP_BASE_URL.replace(/\/?$/, '/');
+            const params = new URLSearchParams({
+                id: device.deviceId,
+                name: device.deviceName || ''
+            });
+            return base + '?' + params.toString();
+        }
+
+        function renderGrid(devices) {
+            grid.innerHTML = '';
+            devices.forEach(d => {
+                const card = document.createElement('div');
+                card.className = 'qr-card';
+                const url = buildQrUrl(d);
+
+                const imgBox = document.createElement('div');
+                imgBox.className = 'qr-img';
+                card.appendChild(imgBox);
+
+                new QRCode(imgBox, {
+                    text: url,
+                    width: 150,
+                    height: 150,
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+
+                const name = document.createElement('div');
+                name.className = 'qr-name';
+                name.textContent = d.deviceName || d.deviceId;
+                card.appendChild(name);
+
+                const id = document.createElement('div');
+                id.className = 'qr-id';
+                id.textContent = d.deviceId;
+                card.appendChild(id);
+
+                const dl = document.createElement('button');
+                dl.className = 'qr-dl';
+                dl.textContent = '다운로드';
+                dl.addEventListener('click', () => downloadQr(imgBox, d));
+                card.appendChild(dl);
+
+                grid.appendChild(card);
+            });
+        }
+
+        function downloadQr(container, device) {
+            const canvas = container.querySelector('canvas');
+            const img = container.querySelector('img');
+            const src = canvas ? canvas.toDataURL('image/png') : (img ? img.src : null);
+            if (!src) return;
+            const a = document.createElement('a');
+            a.href = src;
+            a.download = `QR_${device.deviceName || device.deviceId}.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        async function downloadAll() {
+            const cards = grid.querySelectorAll('.qr-card');
+            for (let i = 0; i < cards.length; i++) {
+                const container = cards[i].querySelector('.qr-img');
+                downloadQr(container, devicesCache[i]);
+                await new Promise(r => setTimeout(r, 150));
+            }
+        }
+
+        downloadAllBtn.addEventListener('click', downloadAll);
+
+        async function loadDevices() {
+            msg.textContent = '불러오는 중...';
+            msg.classList.remove('qr-hidden');
+            grid.innerHTML = '';
+            countEl.textContent = '';
+            downloadAllBtn.classList.add('qr-hidden');
+
+            try {
+                const res = await fetch(CONFIG.API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action: 'getStatus' })
+                });
+                const data = await res.json();
+
+                if (!data.success || !Array.isArray(data.devices)) {
+                    msg.textContent = '디바이스 정보를 불러오지 못했습니다.';
+                    return;
+                }
+
+                // 중복 제거 (deviceId 기준)
+                const seen = new Set();
+                devicesCache = data.devices.filter(d => {
+                    if (!d.deviceId || seen.has(d.deviceId)) return false;
+                    seen.add(d.deviceId);
+                    return true;
+                });
+
+                if (devicesCache.length === 0) {
+                    msg.textContent = '등록된 디바이스가 없습니다.';
+                    return;
+                }
+
+                renderGrid(devicesCache);
+                msg.classList.add('qr-hidden');
+                countEl.textContent = `${devicesCache.length}개`;
+                downloadAllBtn.classList.remove('qr-hidden');
+            } catch (err) {
+                msg.textContent = '오류: ' + (err.message || err);
+            }
+        }
+
+        loadBtn.addEventListener('click', loadDevices);
+
+        authInput.focus();
+    })();
+    </script>
+</body>
+</html>

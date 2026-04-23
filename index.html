@@ -23,6 +23,7 @@
             </div>
             <ul class="sidebar-menu">
                 <li><button id="homeMenuBtn" class="sidebar-item">디바이스 관리</button></li>
+                <li><a id="qrGenMenuBtn" class="sidebar-item" href="qr-generator.html">QR 생성기 (관리자)</a></li>
             </ul>
         </nav>
 
@@ -138,26 +139,18 @@
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label>셀 선택</label>
-                        <div class="cell-selector">
-                            <label class="cell-option">
-                                <input type="radio" name="modalCell" value="1셀" checked>
-                                <span class="cell-label">1셀</span>
-                            </label>
-                            <label class="cell-option">
-                                <input type="radio" name="modalCell" value="2셀">
-                                <span class="cell-label">2셀</span>
-                            </label>
-                        </div>
-                    </div>
-                    <div class="form-group">
                         <label for="modalRenterName">이름</label>
                         <input type="text" id="modalRenterName" placeholder="이름을 입력하세요" autocomplete="off">
                     </div>
-                    <div class="button-row" style="margin-top:24px;">
-                        <button id="cancelRentFromStatus" class="secondary-btn">취소</button>
-                        <button id="confirmRentFromStatus" class="primary-btn" style="background:#fff;color:#111;border-color:#fff;">대여</button>
+                    <label class="remember-name-option" for="rememberNameCheck">
+                        <input type="checkbox" id="rememberNameCheck">
+                        <span>이 기기에 이름 기억하기</span>
+                    </label>
+                    <div class="cell-rent-buttons">
+                        <button id="rentCell1Btn" class="primary-btn">1셀 대여</button>
+                        <button id="rentCell2Btn" class="primary-btn">2셀 대여</button>
                     </div>
+                    <button id="cancelRentFromStatus" class="secondary-btn cancel-full">취소</button>
                 </div>
             </div>
         </div>

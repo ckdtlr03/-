@@ -23,6 +23,41 @@ class DeviceRentalApp {
     init() {
         this.bindEvents();
         this.checkApiConfig();
+        this.handleQrDeepLink();
+    }
+
+    /**
+     * QR 스캔으로 진입한 경우(?id=... 파라미터) 자동으로 대여/반납 모달 표시
+     */
+    async handleQrDeepLink() {
+        const params = new URLSearchParams(window.location.search);
+        const deviceId = params.get('id');
+        if (!deviceId) return;
+
+        const deviceName = params.get('name') || '';
+        history.replaceState(null, '', window.location.pathname);
+
+        this.showLoading(true);
+        try {
+            const response = await this.callApi({ action: 'getStatus' });
+            this.showLoading(false);
+
+            if (!response || !response.success) {
+                alert('디바이스 정보를 불러오지 못했습니다.');
+                return;
+            }
+
+            const device = (response.devices || []).find(d => d.deviceId === deviceId);
+            if (!device) {
+                alert(`등록되지 않은 디바이스입니다: ${deviceName || deviceId}`);
+                return;
+            }
+
+            this.showDeviceAction(device);
+        } catch (error) {
+            this.showLoading(false);
+            alert('오류 발생: ' + (error.message || error));
+        }
     }
 
     checkApiConfig() {
@@ -141,11 +176,10 @@ class DeviceRentalApp {
             if (e.target === e.currentTarget) closeRentModal();
         });
         document.getElementById('cancelRentFromStatus').addEventListener('click', closeRentModal);
-        document.getElementById('confirmRentFromStatus').addEventListener('click', () => {
-            this.confirmRentFromStatus();
-        });
+        document.getElementById('rentCell1Btn').addEventListener('click', () => this.confirmRentFromStatus('1셀'));
+        document.getElementById('rentCell2Btn').addEventListener('click', () => this.confirmRentFromStatus('2셀'));
         document.getElementById('modalRenterName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.confirmRentFromStatus();
+            if (e.key === 'Enter') this.confirmRentFromStatus('1셀');
         });
     }
 
@@ -450,20 +484,32 @@ class DeviceRentalApp {
         this._bulkRentDevices = selected;
         const title = document.querySelector('#rentFromStatusModal .modal-header h2');
         if (title) title.textContent = `${selected.length}개 디바이스 대여`;
-        document.getElementById('modalRenterName').value = '';
-        document.querySelector('input[name="modalCell"][value="1셀"]').checked = true;
+
+        const nameInput = document.getElementById('modalRenterName');
+        const rememberCheck = document.getElementById('rememberNameCheck');
+        const saved = localStorage.getItem('rentRenterName') || '';
+        nameInput.value = saved;
+        if (rememberCheck) rememberCheck.checked = !!saved;
+
         document.getElementById('rentFromStatusModal').classList.add('active');
-        document.getElementById('modalRenterName').focus();
+        if (!saved) nameInput.focus();
     }
 
-    async confirmBulkRent() {
+    async confirmBulkRent(cell) {
         const name = document.getElementById('modalRenterName').value.trim();
         if (!name) {
             alert(CONFIG.MESSAGES.ERROR_NO_NAME);
             document.getElementById('modalRenterName').focus();
             return;
         }
-        const cell = document.querySelector('input[name="modalCell"]:checked').value;
+
+        const rememberCheck = document.getElementById('rememberNameCheck');
+        if (rememberCheck && rememberCheck.checked) {
+            localStorage.setItem('rentRenterName', name);
+        } else {
+            localStorage.removeItem('rentRenterName');
+        }
+
         const devices = this._bulkRentDevices;
 
         document.getElementById('rentFromStatusModal').classList.remove('active');
@@ -600,16 +646,21 @@ class DeviceRentalApp {
         this._bulkRentMode = false;
         this._bulkRentDevices = [];
         const title = document.querySelector('#rentFromStatusModal .modal-header h2');
-        if (title) title.textContent = '대여 정보 입력';
+        if (title) title.textContent = device.deviceName || device.deviceId;
         document.getElementById('deviceActionModal').classList.remove('active');
-        document.getElementById('modalRenterName').value = '';
-        document.querySelector('input[name="modalCell"][value="1셀"]').checked = true;
+
+        const nameInput = document.getElementById('modalRenterName');
+        const rememberCheck = document.getElementById('rememberNameCheck');
+        const saved = localStorage.getItem('rentRenterName') || '';
+        nameInput.value = saved;
+        if (rememberCheck) rememberCheck.checked = !!saved;
+
         document.getElementById('rentFromStatusModal').classList.add('active');
-        document.getElementById('modalRenterName').focus();
+        if (!saved) nameInput.focus();
     }
 
-    async confirmRentFromStatus() {
-        if (this._bulkRentMode) return this.confirmBulkRent();
+    async confirmRentFromStatus(cell) {
+        if (this._bulkRentMode) return this.confirmBulkRent(cell);
         const name = document.getElementById('modalRenterName').value.trim();
         if (!name) {
             alert(CONFIG.MESSAGES.ERROR_NO_NAME);
@@ -617,7 +668,13 @@ class DeviceRentalApp {
             return;
         }
 
-        const cell = document.querySelector('input[name="modalCell"]:checked').value;
+        const rememberCheck = document.getElementById('rememberNameCheck');
+        if (rememberCheck && rememberCheck.checked) {
+            localStorage.setItem('rentRenterName', name);
+        } else {
+            localStorage.removeItem('rentRenterName');
+        }
+
         const device = this._rentStatusDevice;
 
         document.getElementById('rentFromStatusModal').classList.remove('active');
