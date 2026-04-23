@@ -117,11 +117,6 @@ class DeviceRentalApp {
             qrbox: (vw, vh) => {
                 const edge = Math.floor(Math.min(vw, vh) * 0.9);
                 return { width: edge, height: edge };
-            },
-            aspectRatio: 1.0,
-            videoConstraints: {
-                width: { ideal: 1920, min: 1280 },
-                height: { ideal: 1080, min: 720 }
             }
         };
 
@@ -136,12 +131,26 @@ class DeviceRentalApp {
             }
         };
 
+        // 해상도까지 포함한 전체 MediaStreamConstraints를 1번째 인자로 전달
+        const constraints = {
+            deviceId: { exact: cam.id },
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 }
+        };
+
         try {
-            await this._html5Qr.start(cam.id, config, onScan, onError);
+            await this._html5Qr.start(constraints, config, onScan, onError);
             statusEl.textContent = `시작됨 · ${cam.label || 'unknown'}`;
         } catch (err) {
-            console.error('camera start error:', err);
-            statusEl.textContent = '카메라 시작 실패: ' + (err.message || err);
+            console.warn('strict constraints failed, retrying', err);
+            // 일부 브라우저가 high-res를 거부하면 cameraId만으로 폴백
+            try {
+                await this._html5Qr.start(cam.id, config, onScan, onError);
+                statusEl.textContent = `시작됨 (저해상도) · ${cam.label || 'unknown'}`;
+            } catch (err2) {
+                console.error('camera start error:', err2);
+                statusEl.textContent = '카메라 시작 실패: ' + (err2.message || err2);
+            }
         }
     }
 
