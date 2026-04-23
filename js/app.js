@@ -42,6 +42,7 @@ class DeviceRentalApp {
 
     /**
      * deviceId로 현재 상태 조회 후 대여/반납 모달 표시 (QR 스캔 공통)
+     * 저장된 이름·셀이 있으면 모달 없이 바로 진행
      */
     async openDeviceActionById(deviceId, deviceName) {
         this.showLoading(true);
@@ -60,10 +61,49 @@ class DeviceRentalApp {
                 return;
             }
 
+            if (this._hasAutoRent()) {
+                await this._autoRentOrReturn(device);
+                return;
+            }
+
             this.showDeviceAction(device);
         } catch (error) {
             this.showLoading(false);
             alert('오류 발생: ' + (error.message || error));
+        }
+    }
+
+    _hasAutoRent() {
+        return localStorage.getItem('rentAutoSkip') === '1'
+            && !!localStorage.getItem('rentRenterName')
+            && !!localStorage.getItem('rentRenterCell');
+    }
+
+    async _autoRentOrReturn(device) {
+        const isRented = device.status === 'rented';
+        const name = localStorage.getItem('rentRenterName');
+        const cell = localStorage.getItem('rentRenterCell');
+        const label = device.deviceName || device.deviceId;
+
+        this.showLoading(true);
+        try {
+            const payload = isRented
+                ? { action: 'return', deviceId: device.deviceId, deviceName: device.deviceName }
+                : { action: 'rent', deviceId: device.deviceId, deviceName: device.deviceName, renterName: name, cell: cell };
+            const response = await this.callApi(payload);
+            this.showLoading(false);
+
+            if (response && response.success) {
+                alert(`${label} ${isRented ? '반납' : '대여'} 완료 (${isRented ? '' : cell + ' · '}${name})`);
+                if (document.getElementById('mainScreen').classList.contains('active')) {
+                    this.loadDevices();
+                }
+            } else {
+                alert((isRented ? '반납' : '대여') + ' 실패: ' + ((response && response.message) || '알 수 없는 오류'));
+            }
+        } catch (err) {
+            this.showLoading(false);
+            alert('오류: ' + (err.message || err));
         }
     }
 
@@ -260,6 +300,16 @@ class DeviceRentalApp {
             closeSidebar();
             if (this._selectionMode) this.exitSelectionMode();
             this.showScreen('homeScreen');
+        });
+
+        // 사이드바 메뉴: 저장 정보 초기화
+        document.getElementById('clearSavedBtn').addEventListener('click', () => {
+            closeSidebar();
+            if (!confirm('저장된 이름과 셀을 초기화합니다. 다음 대여 시 다시 입력이 필요합니다.')) return;
+            localStorage.removeItem('rentRenterName');
+            localStorage.removeItem('rentRenterCell');
+            localStorage.removeItem('rentAutoSkip');
+            alert('초기화되었습니다.');
         });
 
         // 홈 → 대여 및 반납
@@ -645,7 +695,9 @@ class DeviceRentalApp {
         const rememberCheck = document.getElementById('rememberNameCheck');
         const saved = localStorage.getItem('rentRenterName') || '';
         nameInput.value = saved;
-        if (rememberCheck) rememberCheck.checked = !!saved;
+        if (rememberCheck) {
+            rememberCheck.checked = localStorage.getItem('rentAutoSkip') === '1';
+        }
 
         document.getElementById('rentFromStatusModal').classList.add('active');
         if (!saved) nameInput.focus();
@@ -662,8 +714,12 @@ class DeviceRentalApp {
         const rememberCheck = document.getElementById('rememberNameCheck');
         if (rememberCheck && rememberCheck.checked) {
             localStorage.setItem('rentRenterName', name);
+            localStorage.setItem('rentRenterCell', cell);
+            localStorage.setItem('rentAutoSkip', '1');
         } else {
             localStorage.removeItem('rentRenterName');
+            localStorage.removeItem('rentRenterCell');
+            localStorage.removeItem('rentAutoSkip');
         }
 
         const devices = this._bulkRentDevices;
@@ -809,7 +865,9 @@ class DeviceRentalApp {
         const rememberCheck = document.getElementById('rememberNameCheck');
         const saved = localStorage.getItem('rentRenterName') || '';
         nameInput.value = saved;
-        if (rememberCheck) rememberCheck.checked = !!saved;
+        if (rememberCheck) {
+            rememberCheck.checked = localStorage.getItem('rentAutoSkip') === '1';
+        }
 
         document.getElementById('rentFromStatusModal').classList.add('active');
         if (!saved) nameInput.focus();
@@ -827,8 +885,12 @@ class DeviceRentalApp {
         const rememberCheck = document.getElementById('rememberNameCheck');
         if (rememberCheck && rememberCheck.checked) {
             localStorage.setItem('rentRenterName', name);
+            localStorage.setItem('rentRenterCell', cell);
+            localStorage.setItem('rentAutoSkip', '1');
         } else {
             localStorage.removeItem('rentRenterName');
+            localStorage.removeItem('rentRenterCell');
+            localStorage.removeItem('rentAutoSkip');
         }
 
         const device = this._rentStatusDevice;

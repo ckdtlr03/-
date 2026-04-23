@@ -8,7 +8,7 @@
     <meta http-equiv="expires" content="0">
     <title>디바이스 대여/반납 시스템</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-    <link rel="stylesheet" href="css/style.css?v=13">
+    <link rel="stylesheet" href="css/style.css?v=14">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 </head>
 <body>
@@ -27,6 +27,7 @@
             </div>
             <ul class="sidebar-menu">
                 <li><button id="homeMenuBtn" class="sidebar-item">디바이스 관리</button></li>
+                <li><button id="clearSavedBtn" class="sidebar-item">저장 정보 초기화</button></li>
                 <li><a id="qrGenMenuBtn" class="sidebar-item" href="qr-generator.html">QR 생성기 (관리자)</a></li>
             </ul>
         </nav>
@@ -178,7 +179,7 @@
                     </div>
                     <label class="remember-name-option" for="rememberNameCheck">
                         <input type="checkbox" id="rememberNameCheck">
-                        <span>이 기기에 이름 기억하기</span>
+                        <span>다음부터 이름·셀 묻지 않고 바로 진행</span>
                     </label>
                     <div class="cell-rent-buttons">
                         <button id="rentCell1Btn" class="primary-btn">1셀 대여</button>
@@ -196,7 +197,7 @@
         </div>
     </div>
 
-    <script src="js/config.js?v=13"></script>
-    <script src="js/app.js?v=13"></script>
+    <script src="js/config.js?v=14"></script>
+    <script src="js/app.js?v=14"></script>
 </body>
 </html>
