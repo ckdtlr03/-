@@ -71,19 +71,25 @@ class DeviceRentalApp {
      * 촬영된 이미지에서 QR 디코딩 → 대여/반납 모달 열기
      */
     async decodeQrFromImage(file) {
-        if (typeof jsQR === 'undefined') {
-            alert('QR 디코더가 로드되지 않았습니다. 페이지를 새로고침해주세요.');
-            return;
-        }
-
         this.showLoading(true);
         try {
             const img = await this._loadImageFromFile(file);
-            const decoded = this._decodeQrFromImageElement(img);
+
+            // 1) BarcodeDetector 우선 (Android Chrome/Edge 하드웨어 가속)
+            let decoded = await this._decodeWithBarcodeDetector(img);
+
+            // 2) jsQR 폴백 — 여러 해상도로 시도
+            if (!decoded && typeof jsQR !== 'undefined') {
+                for (const edge of [1600, 2000, 1200, 800]) {
+                    decoded = this._decodeWithJsQR(img, edge);
+                    if (decoded) break;
+                }
+            }
+
             this.showLoading(false);
 
             if (!decoded) {
-                alert('QR 코드를 인식하지 못했습니다. 다시 찍어주세요.');
+                alert(`QR 코드를 인식하지 못했습니다.\n사진 크기: ${img.naturalWidth}×${img.naturalHeight}\nQR이 화면 중앙에 선명하게 나오도록 다시 찍어주세요.`);
                 return;
             }
 
@@ -98,7 +104,7 @@ class DeviceRentalApp {
             }
 
             if (!deviceId) {
-                alert('인식된 QR에 디바이스 정보가 없습니다.');
+                alert('인식된 QR에 디바이스 정보가 없습니다.\n내용: ' + decoded);
                 return;
             }
 
@@ -123,10 +129,22 @@ class DeviceRentalApp {
         });
     }
 
-    _decodeQrFromImageElement(img) {
-        // 큰 이미지는 긴 변 1600px로 축소 (jsQR 성능/메모리)
-        const MAX_EDGE = 1600;
-        const scale = Math.min(1, MAX_EDGE / Math.max(img.naturalWidth, img.naturalHeight));
+    async _decodeWithBarcodeDetector(img) {
+        if (!('BarcodeDetector' in window)) return null;
+        try {
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            const bitmap = await createImageBitmap(img);
+            const results = await detector.detect(bitmap);
+            bitmap.close && bitmap.close();
+            if (results && results.length > 0) return results[0].rawValue;
+        } catch (e) {
+            console.warn('BarcodeDetector failed:', e);
+        }
+        return null;
+    }
+
+    _decodeWithJsQR(img, maxEdge) {
+        const scale = Math.min(1, maxEdge / Math.max(img.naturalWidth, img.naturalHeight));
         const w = Math.round(img.naturalWidth * scale);
         const h = Math.round(img.naturalHeight * scale);
 
