@@ -7,7 +7,8 @@
     <meta http-equiv="pragma" content="no-cache">
     <meta http-equiv="expires" content="0">
     <title>디바이스 대여/반납 시스템</title>
-    <link rel="stylesheet" href="css/style.css?v=2">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="css/style.css?v=3">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 </head>
 <body>
@@ -54,6 +55,16 @@
                             <path d="M8 15h3"/>
                         </svg>
                         <span>대여 및 반납</span>
+                    </button>
+                    <button id="enterScanBtn" class="home-action-btn">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+                            <path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+                            <path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+                            <path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+                            <rect x="7" y="7" width="10" height="10" rx="1"/>
+                        </svg>
+                        <span>QR 인식</span>
                     </button>
                 </div>
             </div>
@@ -106,6 +117,23 @@
                     <button id="bulkRentBtn" class="primary-btn sm">대여 <span id="bulkRentCount">0</span></button>
                     <button id="bulkReturnBtn" class="secondary-btn sm">반납 <span id="bulkReturnCount">0</span></button>
                 </div>
+            </div>
+        </div>
+
+        <!-- QR 스캔 화면 -->
+        <div id="qrScanScreen" class="screen">
+            <div class="main-header">
+                <button id="backFromScanBtn" class="icon-btn icon-btn-back" aria-label="홈으로">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </button>
+                <h1 class="main-title">QR 인식</h1>
+                <div class="main-header-actions"></div>
+            </div>
+            <div class="qr-scan-body">
+                <div id="qrReader" class="qr-reader"></div>
+                <p id="qrScanStatus" class="qr-scan-status">카메라를 QR 코드에 맞춰주세요.</p>
             </div>
         </div>
 
@@ -165,7 +193,7 @@
         </div>
     </div>
 
-    <script src="js/config.js?v=2"></script>
-    <script src="js/app.js?v=2"></script>
+    <script src="js/config.js?v=3"></script>
+    <script src="js/app.js?v=3"></script>
 </body>
 </html>

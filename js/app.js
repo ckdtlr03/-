@@ -37,6 +37,13 @@ class DeviceRentalApp {
         const deviceName = params.get('name') || '';
         history.replaceState(null, '', window.location.pathname);
 
+        await this.openDeviceActionById(deviceId, deviceName);
+    }
+
+    /**
+     * deviceId로 현재 상태 조회 후 대여/반납 모달 표시 (QR 스캔 공통)
+     */
+    async openDeviceActionById(deviceId, deviceName) {
         this.showLoading(true);
         try {
             const response = await this.callApi({ action: 'getStatus' });
@@ -58,6 +65,72 @@ class DeviceRentalApp {
             this.showLoading(false);
             alert('오류 발생: ' + (error.message || error));
         }
+    }
+
+    /**
+     * QR 스캔 화면 열기 — 카메라 시작
+     */
+    async openQrScanner() {
+        this.showScreen('qrScanScreen');
+        const statusEl = document.getElementById('qrScanStatus');
+        statusEl.textContent = '카메라 권한을 확인하는 중...';
+
+        if (typeof Html5Qrcode === 'undefined') {
+            statusEl.textContent = 'QR 스캐너 라이브러리를 불러오지 못했습니다.';
+            return;
+        }
+
+        try {
+            if (!this._html5Qr) {
+                this._html5Qr = new Html5Qrcode('qrReader');
+            }
+            this._qrProcessing = false;
+
+            await this._html5Qr.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 240, height: 240 } },
+                (decodedText) => this.handleScannedCode(decodedText),
+                () => {}
+            );
+            statusEl.textContent = '카메라를 QR 코드에 맞춰주세요.';
+        } catch (err) {
+            statusEl.textContent = '카메라 접근 실패: ' + (err.message || err);
+        }
+    }
+
+    async closeQrScanner() {
+        if (this._html5Qr) {
+            try {
+                await this._html5Qr.stop();
+                this._html5Qr.clear();
+            } catch {}
+        }
+    }
+
+    async handleScannedCode(decodedText) {
+        if (this._qrProcessing) return;
+        this._qrProcessing = true;
+
+        let deviceId = '';
+        let deviceName = '';
+        try {
+            const url = new URL(decodedText);
+            deviceId = url.searchParams.get('id') || '';
+            deviceName = url.searchParams.get('name') || '';
+        } catch {
+            deviceId = decodedText.trim();
+        }
+
+        if (!deviceId) {
+            document.getElementById('qrScanStatus').textContent = '인식된 QR에 디바이스 정보가 없습니다.';
+            setTimeout(() => { this._qrProcessing = false; }, 1500);
+            return;
+        }
+
+        await this.closeQrScanner();
+        this.showScreen('homeScreen');
+        await this.openDeviceActionById(deviceId, deviceName);
+        this._qrProcessing = false;
     }
 
     checkApiConfig() {
@@ -121,6 +194,17 @@ class DeviceRentalApp {
         document.getElementById('enterRentalBtn').addEventListener('click', () => {
             this.showScreen('mainScreen');
             this.loadDevices();
+        });
+
+        // 홈 → QR 인식
+        document.getElementById('enterScanBtn').addEventListener('click', () => {
+            this.openQrScanner();
+        });
+
+        // QR 스캔 → 홈
+        document.getElementById('backFromScanBtn').addEventListener('click', async () => {
+            await this.closeQrScanner();
+            this.showScreen('homeScreen');
         });
 
         // 디바이스 현황 → 홈
