@@ -1134,6 +1134,11 @@ input[type="text"]::placeholder {
     font-size: 14px;
     text-align: center;
 }
+.qr-switch-btn {
+    padding: 10px 20px;
+    font-size: 13px;
+    max-width: 200px;
+}
 
 /* ── 셀별 대여 버튼 ── */
 .cell-rent-buttons {

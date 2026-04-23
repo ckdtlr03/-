@@ -84,37 +84,67 @@ class DeviceRentalApp {
         await this.closeQrScanner();
         this._qrProcessing = false;
 
-        const config = { fps: 10, qrbox: { width: 240, height: 240 } };
-        const onScan = (decodedText) => this.handleScannedCode(decodedText);
-        const onError = () => {}; // 프레임별 실패는 무시
-
         try {
-            this._html5Qr = new Html5Qrcode('qrReader');
-
-            // 1) facingMode: 'environment' 로 바로 후면 시도
-            try {
-                await this._html5Qr.start({ facingMode: 'environment' }, config, onScan, onError);
-                statusEl.textContent = '카메라를 QR 코드에 맞춰주세요.';
-                return;
-            } catch (err) {
-                console.warn('facingMode start failed, trying camera list', err);
-            }
-
-            // 2) 실패 시 카메라 목록에서 'back/rear' 라벨 찾기
+            // 카메라 목록에서 후면 우선 선택
             const cameras = await Html5Qrcode.getCameras();
             if (!cameras || cameras.length === 0) {
                 statusEl.textContent = '사용 가능한 카메라가 없습니다.';
                 return;
             }
-            const back = cameras.find(c => /back|rear|환경|후면/i.test(c.label));
-            const cameraId = back ? back.id : cameras[cameras.length - 1].id;
+            this._qrCameras = cameras;
 
-            await this._html5Qr.start(cameraId, config, onScan, onError);
-            statusEl.textContent = '카메라를 QR 코드에 맞춰주세요.';
+            const backIdx = cameras.findIndex(c => /back|rear|환경|후면/i.test(c.label));
+            this._qrCameraIdx = backIdx >= 0 ? backIdx : (cameras.length - 1);
+
+            await this._startQrCamera();
         } catch (err) {
             console.error('QR scanner start error:', err);
             statusEl.textContent = '카메라 시작 실패: ' + (err.message || err);
         }
+    }
+
+    async _startQrCamera() {
+        const statusEl = document.getElementById('qrScanStatus');
+        const cam = this._qrCameras[this._qrCameraIdx];
+        if (!cam) {
+            statusEl.textContent = '카메라 정보 없음';
+            return;
+        }
+
+        this._html5Qr = new Html5Qrcode('qrReader');
+        const config = {
+            fps: 15,
+            qrbox: (vw, vh) => {
+                const edge = Math.floor(Math.min(vw, vh) * 0.9);
+                return { width: edge, height: edge };
+            },
+            videoConstraints: {
+                deviceId: cam.id,
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                focusMode: 'continuous'
+            }
+        };
+        const onScan = (decodedText) => this.handleScannedCode(decodedText);
+        const onError = () => {};
+
+        try {
+            await this._html5Qr.start(cam.id, config, onScan, onError);
+            statusEl.textContent = `카메라: ${cam.label || 'unknown'}`;
+        } catch (err) {
+            console.error('camera start error:', err);
+            statusEl.textContent = '카메라 시작 실패: ' + (err.message || err);
+        }
+    }
+
+    async switchQrCamera() {
+        if (!this._qrCameras || this._qrCameras.length < 2) {
+            document.getElementById('qrScanStatus').textContent = '전환 가능한 카메라가 없습니다.';
+            return;
+        }
+        await this.closeQrScanner();
+        this._qrCameraIdx = (this._qrCameraIdx + 1) % this._qrCameras.length;
+        await this._startQrCamera();
     }
 
     async closeQrScanner() {
@@ -229,6 +259,11 @@ class DeviceRentalApp {
         document.getElementById('backFromScanBtn').addEventListener('click', async () => {
             await this.closeQrScanner();
             this.showScreen('homeScreen');
+        });
+
+        // QR 스캔 카메라 전환
+        document.getElementById('switchCameraBtn').addEventListener('click', () => {
+            this.switchQrCamera();
         });
 
         // 디바이스 현황 → 홈
