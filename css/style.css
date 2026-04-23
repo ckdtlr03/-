@@ -127,6 +127,7 @@ body {
 }
 
 .sidebar-item {
+    display: block;
     width: 100%;
     padding: 14px 16px;
     background: none;
@@ -136,9 +137,12 @@ body {
     font-size: 15px;
     font-weight: 500;
     font-family: 'Pretendard', sans-serif;
+    line-height: 1.4;
     text-align: left;
+    text-decoration: none;
     cursor: pointer;
     transition: all 0.15s;
+    box-sizing: border-box;
 }
 
 .sidebar-item:hover {
@@ -342,10 +346,10 @@ body {
 }
 
 .home-action-btn {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 12px;
+    justify-content: flex-start;
     width: 100%;
     padding: 22px 24px;
     background: var(--accent2);
@@ -358,6 +362,16 @@ body {
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+.home-action-btn svg {
+    flex: 0 0 auto;
+}
+.home-action-btn span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    text-align: center;
+    pointer-events: none;
 }
 
 .home-action-btn:hover {
