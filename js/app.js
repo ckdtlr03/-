@@ -31,7 +31,7 @@ class DeviceRentalApp {
      */
     async handleQrDeepLink() {
         const params = new URLSearchParams(window.location.search);
-        const deviceId = params.get('id');
+        const deviceId = params.get('d') || params.get('id');
         if (!deviceId) return;
 
         const deviceName = params.get('name') || '';
@@ -117,6 +117,11 @@ class DeviceRentalApp {
             qrbox: (vw, vh) => {
                 const edge = Math.floor(Math.min(vw, vh) * 0.9);
                 return { width: edge, height: edge };
+            },
+            aspectRatio: 1.0,
+            videoConstraints: {
+                width: { ideal: 1920, min: 1280 },
+                height: { ideal: 1080, min: 720 }
             }
         };
 
@@ -179,7 +184,7 @@ class DeviceRentalApp {
         let deviceName = '';
         try {
             const url = new URL(decodedText);
-            deviceId = url.searchParams.get('id') || '';
+            deviceId = url.searchParams.get('d') || url.searchParams.get('id') || '';
             deviceName = url.searchParams.get('name') || '';
         } catch {
             deviceId = decodedText.trim();
