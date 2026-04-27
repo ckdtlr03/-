@@ -8,7 +8,7 @@
     <meta http-equiv="expires" content="0">
     <title>디바이스 대여/반납 시스템</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-    <link rel="stylesheet" href="css/style.css?v=17">
+    <link rel="stylesheet" href="css/style.css?v=18">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 </head>
 <body>
@@ -68,6 +68,24 @@
                         <span>QR 인식</span>
                     </button>
                 </div>
+
+                <!-- A안: 홈 대시보드 — 현재 대여 중 -->
+                <section class="home-dashboard">
+                    <div class="home-dashboard-header">
+                        <span class="home-dashboard-title">현재 대여 중</span>
+                        <span id="homeRentedCount" class="dashboard-count">0</span>
+                        <button id="refreshHomeDashBtn" class="dashboard-refresh" aria-label="새로고침">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <polyline points="1 20 1 14 7 14"/>
+                                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="homeRentedList" class="home-rented-grid">
+                        <div class="home-rented-empty">불러오는 중...</div>
+                    </div>
+                </section>
             </div>
         </div>
 
@@ -197,7 +215,18 @@
         </div>
     </div>
 
-    <script src="js/config.js?v=17"></script>
-    <script src="js/app.js?v=17"></script>
+    <!-- B안: PC 우측 고정 패널 — 현재 대여 중 -->
+    <aside id="pcRentPanel" class="pc-rent-panel">
+        <div class="pc-rent-panel-header">
+            <span>현재 대여 중</span>
+            <span id="pcRentedCount" class="dashboard-count">0</span>
+        </div>
+        <div id="pcRentedList" class="pc-rented-list">
+            <div class="home-rented-empty">불러오는 중...</div>
+        </div>
+    </aside>
+
+    <script src="js/config.js?v=18"></script>
+    <script src="js/app.js?v=18"></script>
 </body>
 </html>

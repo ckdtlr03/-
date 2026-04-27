@@ -1184,6 +1184,120 @@ input[type="text"]::placeholder {
     cursor: pointer;
 }
 
+/* ── 홈 대시보드 (대여 중 카드) ── */
+.home-dashboard {
+    margin-top: 28px;
+}
+.home-dashboard-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 500;
+}
+.home-dashboard-title {
+    flex: 1;
+}
+.dashboard-count {
+    background: var(--accent2);
+    color: #111;
+    padding: 2px 9px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 22px;
+    text-align: center;
+}
+.dashboard-refresh {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+}
+.dashboard-refresh:hover { color: var(--text); }
+.dashboard-refresh.rotating svg {
+    animation: spin 0.6s linear;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.home-rented-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+}
+.home-rented-empty {
+    grid-column: 1 / -1;
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    background: var(--bg2);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+}
+
+.rent-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, background 0.15s;
+}
+.rent-card:hover {
+    border-color: var(--accent2);
+    transform: translateY(-1px);
+    background: var(--panel2);
+}
+.rent-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.rent-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+}
+.rent-card-cell {
+    background: var(--rent-dim);
+    color: var(--rent);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.rent-card-renter {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.rent-card-time {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* ── PC 우측 고정 패널 (B안) ── */
+.pc-rent-panel {
+    display: none;
+}
+
 /* ── 반응형: 태블릿 / PC ── */
 @media (min-width: 768px) {
     /* 스크롤바를 윈도우 오른쪽 끝으로 이동 */
@@ -1227,6 +1341,53 @@ input[type="text"]::placeholder {
     }
     .device-section-body {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
+/* B안: 1280px+에서 우측 고정 패널 */
+@media (min-width: 1280px) {
+    .pc-rent-panel {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        right: 0;
+        top: 56px;
+        width: 300px;
+        height: calc(100vh - 56px);
+        background: var(--bg2);
+        border-left: 1px solid var(--border);
+        padding: 18px 16px;
+        overflow-y: auto;
+        z-index: 50;
+    }
+    .pc-rent-panel-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 14px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text);
+    }
+    .pc-rent-panel-header > span:first-child {
+        flex: 1;
+    }
+    .pc-rented-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    /* 컨테이너가 패널과 겹치지 않도록 우측 마진 */
+    .container {
+        max-width: 1100px;
+        margin-right: 320px;
+        margin-left: auto;
+    }
+    /* 헤더도 동일하게 */
+    .header {
+        padding-right: 320px;
     }
 }
 

@@ -24,6 +24,73 @@ class DeviceRentalApp {
         this.bindEvents();
         this.checkApiConfig();
         this.handleQrDeepLink();
+        this.loadRentedDashboard();
+    }
+
+    /**
+     * 현재 대여 중인 디바이스를 가져와 홈 대시보드 + PC 패널에 렌더
+     */
+    async loadRentedDashboard(animate = false) {
+        const refreshBtn = document.getElementById('refreshHomeDashBtn');
+        if (animate && refreshBtn) {
+            refreshBtn.classList.add('rotating');
+            setTimeout(() => refreshBtn.classList.remove('rotating'), 600);
+        }
+
+        try {
+            const response = await this.callApi({ action: 'getStatus' });
+            if (response && response.success) {
+                const rented = (response.devices || []).filter(d => d.status === 'rented');
+                this._renderRentedDashboard(rented);
+            }
+        } catch (err) {
+            console.error('대시보드 로드 실패:', err);
+        }
+    }
+
+    _renderRentedDashboard(rented) {
+        const homeList = document.getElementById('homeRentedList');
+        const pcList = document.getElementById('pcRentedList');
+        const homeCount = document.getElementById('homeRentedCount');
+        const pcCount = document.getElementById('pcRentedCount');
+
+        if (homeCount) homeCount.textContent = rented.length;
+        if (pcCount) pcCount.textContent = rented.length;
+
+        if (rented.length === 0) {
+            const empty = '<div class="home-rented-empty">대여 중인 디바이스가 없습니다.</div>';
+            if (homeList) homeList.innerHTML = empty;
+            if (pcList) pcList.innerHTML = empty;
+            return;
+        }
+
+        const esc = (s) => this._escapeHtml(s);
+        const cardHtml = (d) => {
+            const rentTime = this.formatDate(d.rentDate);
+            return `<div class="rent-card" data-device-id="${esc(d.deviceId)}">
+                <div class="rent-card-name">${esc(d.deviceName || d.deviceId)}</div>
+                <div class="rent-card-meta">
+                    <span class="rent-card-cell">${esc(d.cell || '-')}</span>
+                    <span class="rent-card-renter">${esc(d.renter || '-')}</span>
+                </div>
+                <div class="rent-card-time">${esc(rentTime)}</div>
+            </div>`;
+        };
+
+        const html = rented.map(cardHtml).join('');
+        if (homeList) homeList.innerHTML = html;
+        if (pcList) pcList.innerHTML = html;
+
+        // 카드 클릭 → 반납 모달
+        const bindCard = (card) => {
+            card.addEventListener('click', () => {
+                const id = card.dataset.deviceId;
+                const device = rented.find(d => d.deviceId === id);
+                if (device) this.showDeviceAction(device);
+            });
+        };
+        if (homeList) homeList.querySelectorAll('.rent-card').forEach(bindCard);
+        if (pcList) pcList.querySelectorAll('.rent-card').forEach(bindCard);
     }
 
     /**
@@ -97,6 +164,8 @@ class DeviceRentalApp {
                 alert(`${label} ${isRented ? '반납' : '대여'} 완료 (${isRented ? '' : cell + ' · '}${name})`);
                 if (document.getElementById('mainScreen').classList.contains('active')) {
                     this.loadDevices();
+                } else {
+                    this.loadRentedDashboard();
                 }
             } else {
                 alert((isRented ? '반납' : '대여') + ' 실패: ' + ((response && response.message) || '알 수 없는 오류'));
@@ -338,6 +407,9 @@ class DeviceRentalApp {
         // 메인 새로고침
         document.getElementById('refreshMainBtn').addEventListener('click', () => this.loadDevices(true));
 
+        // 홈 대시보드 새로고침
+        document.getElementById('refreshHomeDashBtn').addEventListener('click', () => this.loadRentedDashboard(true));
+
         // 다중 선택 토글
         document.getElementById('selectModeBtn').addEventListener('click', () => this.toggleSelectionMode());
 
@@ -394,6 +466,7 @@ class DeviceRentalApp {
             screen.classList.remove('active');
         });
         document.getElementById(screenId).classList.add('active');
+        if (screenId === 'homeScreen') this.loadRentedDashboard();
     }
 
     /**
@@ -416,6 +489,7 @@ class DeviceRentalApp {
             const response = await this.callApi({ action: 'getStatus' });
             if (response && response.success && response.devices) {
                 this.renderDeviceList(response.devices);
+                this._renderRentedDashboard(response.devices.filter(d => d.status === 'rented'));
             } else {
                 container.innerHTML = '<div class="status-empty">데이터를 불러올 수 없습니다.</div>';
             }
