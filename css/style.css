@@ -1329,6 +1329,11 @@ input[type="text"]::placeholder {
         grid-template-columns: repeat(3, 1fr);
     }
 
+    /* 홈 콘텐츠 영역도 넓게 (모바일은 420px 캡 유지, PC는 컨테이너 폭까지) */
+    .home-container {
+        max-width: 100%;
+    }
+
     /* 메인 헤더/검색 패딩 약간 확장 */
     .main-header {
         padding-left: 8px;
@@ -1383,15 +1388,9 @@ input[type="text"]::placeholder {
         flex-direction: column;
         gap: 8px;
     }
-    /* 컨테이너가 패널과 겹치지 않도록 우측 마진 */
-    .container {
-        max-width: 1100px;
-        margin-right: 320px;
-        margin-left: auto;
-    }
-    /* 헤더도 동일하게 */
-    .header {
-        padding-right: 320px;
+    /* B안 패널이 떠 있을 때 body 우측에 패널 폭만큼 패딩 → 컨텐츠와 겹침 방지 */
+    body {
+        padding-right: 300px;
     }
 }
 
