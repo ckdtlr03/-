@@ -1230,25 +1230,25 @@ input[type="text"]::placeholder {
 
 .home-rented-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
 }
 .home-rented-empty {
     grid-column: 1 / -1;
-    padding: 24px;
+    padding: 18px;
     text-align: center;
     color: var(--text-muted);
-    font-size: 13px;
+    font-size: 12px;
     background: var(--bg2);
     border: 1px dashed var(--border);
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .rent-card {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 14px;
+    border-radius: 8px;
+    padding: 8px 10px;
     cursor: pointer;
     transition: transform 0.15s, border-color 0.15s, background 0.15s;
 }
@@ -1258,10 +1258,10 @@ input[type="text"]::placeholder {
     background: var(--panel2);
 }
 .rent-card-name {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--text);
-    margin-bottom: 6px;
+    margin-bottom: 3px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1269,18 +1269,19 @@ input[type="text"]::placeholder {
 .rent-card-meta {
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
+    gap: 5px;
+    font-size: 11px;
     color: var(--text-dim);
-    margin-bottom: 6px;
+    margin-bottom: 2px;
 }
 .rent-card-cell {
     background: var(--rent-dim);
     color: var(--rent);
-    padding: 2px 7px;
-    border-radius: 4px;
-    font-size: 11px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
     font-weight: 600;
+    flex-shrink: 0;
 }
 .rent-card-renter {
     font-weight: 500;
@@ -1289,7 +1290,7 @@ input[type="text"]::placeholder {
     white-space: nowrap;
 }
 .rent-card-time {
-    font-size: 11px;
+    font-size: 10px;
     color: var(--text-muted);
 }
 
@@ -1328,6 +1329,11 @@ input[type="text"]::placeholder {
         gap: 10px;
     }
 
+    /* 홈 대시보드 카드: 태블릿 3열 */
+    .home-rented-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
     /* 메인 헤더/검색 패딩 약간 확장 */
     .main-header {
         padding-left: 8px;
@@ -1341,6 +1347,9 @@ input[type="text"]::placeholder {
     }
     .device-section-body {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+    .home-rented-grid {
+        grid-template-columns: repeat(4, 1fr);
     }
 }
 
