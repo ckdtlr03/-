@@ -368,9 +368,10 @@ body {
 }
 .home-action-btn span {
     position: absolute;
-    left: 0;
-    right: 0;
-    text-align: center;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: none;
 }
 
@@ -1185,8 +1186,17 @@ input[type="text"]::placeholder {
 
 /* ── 반응형: 태블릿 / PC ── */
 @media (min-width: 768px) {
+    /* 스크롤바를 윈도우 오른쪽 끝으로 이동 */
+    body {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
     .container {
         max-width: 900px;
+        overflow: visible;
+        flex: none;
+        min-height: calc(100vh - 56px);
     }
 
     /* 홈 버튼 가로 배치 */
