@@ -23,8 +23,29 @@ class DeviceRentalApp {
     init() {
         this.bindEvents();
         this.checkApiConfig();
+        this._applyVisibilityPrefs();
         this.handleQrDeepLink();
         this.loadRentedDashboard();
+    }
+
+    _applyVisibilityPrefs() {
+        const dashHidden = localStorage.getItem('hideHomeDashboard') === '1';
+        const panelHidden = localStorage.getItem('hidePcPanel') === '1';
+        const dashEl = document.querySelector('.home-dashboard');
+        const panelEl = document.getElementById('pcRentPanel');
+        if (dashEl) dashEl.classList.toggle('is-hidden', dashHidden);
+        if (panelEl) panelEl.classList.toggle('is-hidden', panelHidden);
+
+        const dashBtn = document.getElementById('toggleDashBtn');
+        const panelBtn = document.getElementById('togglePcPanelBtn');
+        if (dashBtn) dashBtn.textContent = `홈 대시보드: ${dashHidden ? '숨김' : '표시'}`;
+        if (panelBtn) panelBtn.textContent = `우측 패널: ${panelHidden ? '숨김' : '표시'}`;
+    }
+
+    _toggleVisibilityPref(key) {
+        const cur = localStorage.getItem(key) === '1';
+        localStorage.setItem(key, cur ? '0' : '1');
+        this._applyVisibilityPrefs();
     }
 
     /**
@@ -369,6 +390,14 @@ class DeviceRentalApp {
             closeSidebar();
             if (this._selectionMode) this.exitSelectionMode();
             this.showScreen('homeScreen');
+        });
+
+        // 사이드바 메뉴: A안/B안 표시 토글
+        document.getElementById('toggleDashBtn').addEventListener('click', () => {
+            this._toggleVisibilityPref('hideHomeDashboard');
+        });
+        document.getElementById('togglePcPanelBtn').addEventListener('click', () => {
+            this._toggleVisibilityPref('hidePcPanel');
         });
 
         // 사이드바 메뉴: 저장 정보 초기화

@@ -1172,6 +1172,9 @@ input[type="text"]::placeholder {
     cursor: pointer;
 }
 
+/* 사용자 숨김 토글 — 미디어쿼리/기본 display 우선 */
+.is-hidden { display: none !important; }
+
 /* ── 홈 대시보드 (대여 중 카드) — 모바일에선 숨김 ── */
 .home-dashboard {
     display: none;
