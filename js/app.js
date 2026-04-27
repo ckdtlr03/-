@@ -437,9 +437,7 @@ class DeviceRentalApp {
         document.getElementById('closeDeviceActionModal').addEventListener('click', () => {
             document.getElementById('deviceActionModal').classList.remove('active');
         });
-        document.getElementById('deviceActionModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
-        });
+        // 외부 클릭으로 닫지 않음 — X 버튼으로만 닫기
 
         // 대여 정보 입력 모달
         const closeRentModal = () => {
@@ -450,9 +448,7 @@ class DeviceRentalApp {
             if (title) title.textContent = '대여 정보 입력';
         };
         document.getElementById('closeRentFromStatusModal').addEventListener('click', closeRentModal);
-        document.getElementById('rentFromStatusModal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) closeRentModal();
-        });
+        // 외부 클릭으로 닫지 않음 — X 또는 취소 버튼으로만 닫기
         document.getElementById('cancelRentFromStatus').addEventListener('click', closeRentModal);
         document.getElementById('rentCell1Btn').addEventListener('click', () => this.confirmRentFromStatus('1셀'));
         document.getElementById('rentCell2Btn').addEventListener('click', () => this.confirmRentFromStatus('2셀'));
