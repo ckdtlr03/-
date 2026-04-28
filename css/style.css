@@ -1329,9 +1329,13 @@ input[type="text"]::placeholder {
         grid-template-columns: repeat(3, 1fr);
     }
 
-    /* 홈 콘텐츠 영역도 넓게 (모바일은 420px 캡 유지, PC는 컨테이너 폭까지) */
+    /* 홈 콘텐츠 영역: 컨테이너 폭까지 펼쳐 대시보드는 넓게 */
     .home-container {
         max-width: 100%;
+    }
+    /* 단, 상단 액션 버튼은 적당한 폭으로 캡 (모바일과 비슷한 느낌) */
+    .home-actions {
+        max-width: 560px;
     }
 
     /* 메인 헤더/검색 패딩 약간 확장 */
